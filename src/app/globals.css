@@ -1,26 +1,316 @@
+/* ==============================================================================
+   CSE AIML DEPARTMENT DATABASE - DENSE & RISOGRAPH STYLING SYSTEM
+   ============================================================================== */
+
 @import "tailwindcss";
 
+/* 1. Global Custom Theme Variables */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg-paper: #fdfcf7;           /* Warm, uncoated cream print paper background */
+  --ink-black: #121212;          /* Rich charcoal print ink */
+  --ink-blue: #004cff;           /* Saturated Cobalt Blue ink */
+  --ink-pink: #ff2e93;           /* Fluorescent Pink ink */
+  --ink-yellow: #fbe600;         /* Vivid Yellow highlight ink */
+  --ink-green: #00b862;          /* Bright Riso Green */
+  
+  --border-width: 2.5px;
+  
+  /* Fonts will be loaded from Layout via CSS variables */
+  --font-heading: 'Space Grotesk', system-ui, -apple-system, sans-serif;
+  --font-technical: 'Outfit', sans-serif;
+  --font-mono: 'Space Mono', monospace;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* 2. Core Resets & Base Styles */
+html, body {
+  background-color: var(--bg-paper);
+  color: var(--ink-black);
+  font-family: var(--font-technical);
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  letter-spacing: -0.01em;
+  /* Add subtle print grain using SVG noise */
+  background-image: radial-gradient(rgba(18, 18, 18, 0.04) 1px, transparent 0);
+  background-size: 16px 16px;
+  scroll-behavior: smooth;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Custom technical monospace accents */
+.tech-label {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--ink-black);
+  letter-spacing: 0.05em;
+}
+
+/* 3. Risograph Custom UI Classes */
+
+/* Flat, heavy-bordered Card with 3D Offset Background pop */
+.riso-card {
+  background-color: #ffffff;
+  border: var(--border-width) solid var(--ink-black);
+  border-radius: 0px; /* Sharp retro technical corners */
+  padding: 1.5rem;
+  position: relative;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 5px 5px 0px var(--ink-black);
+}
+
+/* Interactive Card that depresses when hovered/focused */
+.riso-card-interactive:hover {
+  transform: translate(2px, 2px);
+  box-shadow: 3px 3px 0px var(--ink-black);
+}
+
+/* Styled color offset cards */
+.riso-card-blue {
+  background-color: #ffffff;
+  border: var(--border-width) solid var(--ink-black);
+  box-shadow: 5px 5px 0px var(--ink-blue);
+}
+.riso-card-blue:hover {
+  transform: translate(2px, 2px);
+  box-shadow: 3px 3px 0px var(--ink-blue);
+}
+
+.riso-card-pink {
+  background-color: #ffffff;
+  border: var(--border-width) solid var(--ink-black);
+  box-shadow: 5px 5px 0px var(--ink-pink);
+}
+.riso-card-pink:hover {
+  transform: translate(2px, 2px);
+  box-shadow: 3px 3px 0px var(--ink-pink);
+}
+
+.riso-card-yellow {
+  background-color: #ffffff;
+  border: var(--border-width) solid var(--ink-black);
+  box-shadow: 5px 5px 0px var(--ink-yellow);
+}
+
+/* 4. Risograph Buttons */
+.riso-btn {
+  font-family: var(--font-heading);
+  text-transform: uppercase;
+  font-weight: 700;
+  font-size: 0.9rem;
+  letter-spacing: 0.02em;
+  padding: 0.75rem 1.5rem;
+  border: var(--border-width) solid var(--ink-black);
+  background-color: var(--ink-blue);
+  color: #ffffff;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.1s ease;
+  box-shadow: 4px 4px 0px var(--ink-black);
+  user-select: none;
+}
+
+.riso-btn:hover {
+  transform: translate(1px, 1px);
+  box-shadow: 3px 3px 0px var(--ink-black);
+}
+
+.riso-btn:active {
+  transform: translate(4px, 4px);
+  box-shadow: 0px 0px 0px var(--ink-black);
+}
+
+.riso-btn-pink {
+  background-color: var(--ink-pink);
+}
+
+.riso-btn-yellow {
+  background-color: var(--ink-yellow);
+  color: var(--ink-black);
+}
+
+.riso-btn-secondary {
+  background-color: #ffffff;
+  color: var(--ink-black);
+}
+
+.riso-btn-danger {
+  background-color: #ff3b30;
+  color: #ffffff;
+}
+
+/* Disabled button */
+.riso-btn:disabled {
+  background-color: #e0e0d8;
+  color: #8a8a80;
+  box-shadow: 2px 2px 0px var(--ink-black);
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* 5. Risograph Technical Form Inputs */
+.riso-input {
+  font-family: var(--font-technical);
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  background-color: #ffffff;
+  color: var(--ink-black);
+  border: var(--border-width) solid var(--ink-black);
+  border-radius: 0px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: all 0.1s ease;
+  box-shadow: inset 1px 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.riso-input:focus {
+  outline: none;
+  border-color: var(--ink-blue);
+  box-shadow: 3px 3px 0px var(--ink-blue);
+}
+
+.riso-select {
+  font-family: var(--font-technical);
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  background-color: #ffffff;
+  color: var(--ink-black);
+  border: var(--border-width) solid var(--ink-black);
+  border-radius: 0px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23121212' stroke-width='3'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19.5 8.25l-7.5 7.5-7.5-7.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1rem;
+  padding-right: 2.5rem;
+  transition: all 0.1s ease;
+}
+
+.riso-select:focus {
+  outline: none;
+  border-color: var(--ink-blue);
+  box-shadow: 3px 3px 0px var(--ink-blue);
+}
+
+/* 6. Technical Grid Sheet Borders */
+.sheet-grid {
+  border-collapse: collapse;
+  width: 100%;
+  border: var(--border-width) solid var(--ink-black);
+  background-color: #ffffff;
+}
+
+.sheet-grid th {
+  font-family: var(--font-heading);
+  background-color: #ffffff;
+  color: var(--ink-black);
+  border: var(--border-width) solid var(--ink-black);
+  padding: 0.75rem 1rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.sheet-grid td {
+  border: 1px solid var(--ink-black);
+  padding: 0.65rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: background-color 0.1s ease;
+}
+
+.sheet-grid tr:hover td {
+  background-color: rgba(0, 76, 255, 0.05); /* Very light Riso Blue */
+}
+
+/* 7. Wizard Step Indicator Tabs */
+.riso-step-tab {
+  font-family: var(--font-heading);
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.5rem 1rem;
+  border: var(--border-width) solid var(--ink-black);
+  border-bottom: none;
+  background-color: #ffffff;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.1s ease;
+}
+
+.riso-step-tab.active {
+  background-color: var(--ink-yellow);
+  z-index: 10;
+  top: 2px;
+  height: calc(100% + 2px);
+}
+
+/* Riso Color Badges */
+.riso-badge {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 0.25rem 0.5rem;
+  border: 1.5px solid var(--ink-black);
+  display: inline-block;
+}
+
+.riso-badge-blue {
+  background-color: var(--ink-blue);
+  color: #ffffff;
+}
+
+.riso-badge-pink {
+  background-color: var(--ink-pink);
+  color: #ffffff;
+}
+
+.riso-badge-yellow {
+  background-color: var(--ink-yellow);
+  color: var(--ink-black);
+}
+
+.riso-badge-green {
+  background-color: var(--ink-green);
+  color: #ffffff;
+}
+
+/* 8. Overlay / Textures */
+.halftone-bg {
+  background-image: radial-gradient(var(--ink-black) 15%, transparent 16%);
+  background-size: 4px 4px;
+}
+
+/* Custom Scrollbar for dense lists */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-paper);
+  border-left: 2px solid var(--ink-black);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--ink-black);
+  border: 1px solid var(--bg-paper);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-blue);
 }
