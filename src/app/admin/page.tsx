@@ -163,6 +163,12 @@ export default function AdminDashboard() {
         </div>
 
         <div className="flex gap-3">
+          <a 
+            href="/rules"
+            className="riso-btn riso-btn-secondary text-xs shadow-[2px_2px_0px_#121212] flex items-center gap-1.5 font-bold"
+          >
+            <FileText className="w-4 h-4" /> PLACEMENT RULES
+          </a>
           <button 
             onClick={handleExportExcel}
             disabled={isExporting}
@@ -172,7 +178,7 @@ export default function AdminDashboard() {
           </button>
           <button 
             onClick={logout}
-            className="riso-btn riso-btn-secondary text-xs shadow-[2px_2px_0px_#121212] flex items-center gap-1.5"
+            className="riso-btn riso-btn-danger text-xs shadow-[2px_2px_0px_#121212] flex items-center gap-1.5"
           >
             <LogOut className="w-4 h-4" /> SIGN OUT
           </button>

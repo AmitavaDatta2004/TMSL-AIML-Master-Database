@@ -6,7 +6,7 @@ import { useAuth } from '../providers';
 import { 
   User, BookOpen, GraduationCap, Users, MapPin, 
   AlertTriangle, Save, CheckCircle2, ChevronRight, 
-  ChevronLeft, Sparkles, LogOut, ArrowLeft 
+  ChevronLeft, Sparkles, LogOut, ArrowLeft, FileText 
 } from 'lucide-react';
 
 // Default schema structure matching the 75 Excel columns exactly
@@ -316,12 +316,20 @@ export default function StudentDashboard() {
             </h2>
           </div>
           
-          <button 
-            onClick={logout}
-            className="riso-btn riso-btn-danger text-xs shadow-[2px_2px_0px_#121212] flex items-center gap-1.5"
-          >
-            <LogOut className="w-3.5 h-3.5" /> SIGN OUT
-          </button>
+          <div className="flex gap-2">
+            <a 
+              href="/rules"
+              className="riso-btn riso-btn-yellow text-xs shadow-[2px_2px_0px_#121212] flex items-center gap-1.5 font-bold"
+            >
+              <FileText className="w-3.5 h-3.5" /> PLACEMENT RULES
+            </a>
+            <button 
+              onClick={logout}
+              className="riso-btn riso-btn-danger text-xs shadow-[2px_2px_0px_#121212] flex items-center gap-1.5"
+            >
+              <LogOut className="w-3.5 h-3.5" /> SIGN OUT
+            </button>
+          </div>
         </div>
 
         {/* B. Overview Stats & Submission status */}
