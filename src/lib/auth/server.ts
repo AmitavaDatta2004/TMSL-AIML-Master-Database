@@ -8,6 +8,17 @@ if (!baseUrl) {
   console.warn("NEON_AUTH_BASE_URL is not set. Authentication will fail.");
 }
 
+// Inject trusted origins into process.env so Better Auth picks them up automatically
+// This bypasses the need for the user to configure BETTER_AUTH_TRUSTED_ORIGINS in Vercel manually
+const trustedOrigins = [
+  'http://localhost:3000',
+  'https://tmslaimlmasterdatabase.vercel.app',
+  process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : '',
+  process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : ''
+].filter(Boolean);
+
+process.env.BETTER_AUTH_TRUSTED_ORIGINS = trustedOrigins.join(',');
+
 // Always initialize Neon Auth server instance so the API route never returns 404
 export const auth = createNeonAuth({
   baseUrl: baseUrl as string,
