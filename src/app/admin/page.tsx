@@ -465,11 +465,17 @@ export default function AdminDashboard() {
                         const tabs = [0,1,2,3,4,5,6,7,8];
                         const mergedDetails = { 
                           btech_course_duration: '2023-2027', 
+                          btech_stream: 'CSE-AIML',
                           email_operational_gmail: student.email,
                           full_name: student.full_name,
                           roll_number: student.roll_number,
                           ...(details || {}) 
                         };
+                        
+                        // Force empty string from older drafts to evaluate as CSE-AIML
+                        if (!mergedDetails.btech_stream) {
+                          mergedDetails.btech_stream = 'CSE-AIML';
+                        }
                         const tabProgresses = tabs.map(idx => getTabProgress(idx, mergedDetails));
                         const totalFilled = tabProgresses.reduce((sum, p) => sum + p.filled, 0);
                         const totalRequired = tabProgresses.reduce((sum, p) => sum + p.total, 0);
