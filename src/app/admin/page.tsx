@@ -19,7 +19,6 @@ export default function AdminDashboard() {
   
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedStream, setSelectedStream] = useState('ALL');
   const [selectedGender, setSelectedGender] = useState('ALL');
   const [selectedBacklog, setSelectedBacklog] = useState('ALL');
   const [selectedGap, setSelectedGap] = useState('ALL');
@@ -65,8 +64,8 @@ export default function AdminDashboard() {
     const emailMatch = student.email?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesSearch = nameMatch || rollMatch || emailMatch;
 
-    // 2. Stream Match
-    const matchesStream = selectedStream === 'ALL' || student.stream === selectedStream;
+    // 2. Stream Match (Removed, now always matches as there is only one stream)
+    const matchesStream = true;
 
     // 3. Gender Match
     const matchesGender = selectedGender === 'ALL' || details.gender === selectedGender;
@@ -158,7 +157,7 @@ export default function AdminDashboard() {
             DEPARTMENT DATABASE CONSOLE
           </h2>
           <p className="text-xs font-mono text-gray-500 uppercase tracking-widest mt-1">
-            Administrator Connected: <span className="font-bold text-black">{user?.email}</span>
+            Administrator Connected: <span className="font-bold text-black lowercase">{user?.email}</span>
           </p>
         </div>
 
@@ -244,36 +243,21 @@ export default function AdminDashboard() {
           <SlidersHorizontal className="w-4 h-4" /> [ ADVANCED SUBMISSION FILTERS ]
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
-          {/* Search bar */}
-          <div className="md:col-span-2 flex flex-col gap-1.5">
-            <label className="tech-label">Search Student Record</label>
-            <div className="relative">
-              <input 
-                type="text" 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="riso-input pl-9"
-                placeholder="Search Name, Roll, Email..."
-              />
-              <Search className="w-4 h-4 text-gray-400 absolute left-3 top-3.5" />
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+            {/* Search bar */}
+            <div className="md:col-span-3 flex flex-col gap-1.5">
+              <label className="tech-label">Search Student Record</label>
+              <div className="relative">
+                <input 
+                  type="text" 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="riso-input pl-9"
+                  placeholder="Search Name, Roll, Email..."
+                />
+                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-3.5" />
+              </div>
             </div>
-          </div>
-
-          {/* Stream Filter */}
-          <div className="flex flex-col gap-1.5">
-            <label className="tech-label">Filter Stream</label>
-            <select 
-              value={selectedStream}
-              onChange={(e) => setSelectedStream(e.target.value)}
-              className="riso-select"
-            >
-              <option value="ALL">ALL STREAMS</option>
-              <option value="CSE-AIML">CSE-AIML</option>
-              <option value="CSE">CSE</option>
-              <option value="IT">IT</option>
-            </select>
-          </div>
 
           {/* Gender Filter */}
           <div className="flex flex-col gap-1.5">
@@ -320,16 +304,17 @@ export default function AdminDashboard() {
 
         {/* CGPA Slider Filter row */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-t border-dashed border-black pt-4 mt-1">
-          <div className="flex items-center gap-4 w-full md:w-1/2">
-            <span className="tech-label whitespace-nowrap">MIN AVERAGE CGPA: <span className="text-[var(--ink-pink)] font-black text-sm">{minCgpa}</span></span>
+          <div className="flex items-center gap-3 w-full md:w-1/2">
+            <label className="tech-label whitespace-nowrap">MIN AVERAGE CGPA:</label>
             <input 
-              type="range" 
+              type="number" 
               min="0.00" 
               max="10.00" 
-              step="0.10"
+              step="0.01"
               value={minCgpa}
               onChange={(e) => setMinCgpa(e.target.value)}
-              className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[var(--ink-pink)]"
+              className="riso-input w-24 py-1 px-2 text-sm"
+              placeholder="0.00"
             />
           </div>
           
@@ -347,9 +332,11 @@ export default function AdminDashboard() {
               <th className="w-12 text-center">#</th>
               <th>Roll Number</th>
               <th>Student Full Name</th>
+              <th>Email Address</th>
               <th>Stream</th>
               <th>Avg CGPA</th>
               <th>Backlog</th>
+              <th>Status</th>
               <th>Contact</th>
               <th className="w-24 text-center">Action</th>
             </tr>
@@ -365,6 +352,7 @@ export default function AdminDashboard() {
                     <td className="text-center font-mono text-xs border-r border-black font-bold bg-gray-50">{idx + 1}</td>
                     <td className="font-mono text-xs font-bold border-r border-black">{student.roll_number || 'N.A.'}</td>
                     <td className="font-bold border-r border-black uppercase text-sm">{student.full_name || 'N.A.'}</td>
+                    <td className="font-mono text-[10px] font-semibold border-r border-black text-gray-600">{student.email || 'N.A.'}</td>
                     <td className="font-semibold border-r border-black text-xs">{student.stream || 'CSE-AIML'}</td>
                     <td className="font-mono font-black border-r border-black text-sm text-[var(--ink-blue)]">
                       {details.btech_avg_cgpa || '0.00'}
@@ -374,6 +362,13 @@ export default function AdminDashboard() {
                         <span className="riso-badge riso-badge-pink text-[9px] py-0.5 font-bold">YES ({details.btech_backlog_count})</span>
                       ) : (
                         <span className="riso-badge riso-badge-green text-[9px] py-0.5 font-bold">NO</span>
+                      )}
+                    </td>
+                    <td className="border-r border-black text-center">
+                      {details.declaration_agree === 'YES' ? (
+                        <span className="text-[10px] font-black text-[var(--ink-green)] uppercase bg-green-50 px-2 py-0.5 border border-[var(--ink-green)]">COMPLETE</span>
+                      ) : (
+                        <span className="text-[10px] font-black text-[var(--ink-pink)] uppercase bg-pink-50 px-2 py-0.5 border border-[var(--ink-pink)]">DRAFT</span>
                       )}
                     </td>
                     <td className="font-mono text-xs border-r border-black">{details.contact_operational_1 || 'N.A.'}</td>
@@ -390,7 +385,7 @@ export default function AdminDashboard() {
               })
             ) : (
               <tr>
-                <td colSpan={8} className="text-center py-12 text-sm font-bold text-gray-500 uppercase tracking-wider font-mono">
+                <td colSpan={10} className="text-center py-12 text-sm font-bold text-gray-500 uppercase tracking-wider font-mono">
                   ❌ NO STUDENT DETAILS SUBMISSIONS FOUND MATCHING FILTERS.
                 </td>
               </tr>

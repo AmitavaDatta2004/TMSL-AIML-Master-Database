@@ -17,14 +17,15 @@ const validateEmailFormat = (email: string): boolean => {
     return true;
   }
   
-  return /^tmsl\.aiml27\.\d+[a-z]+@gmail\.com$/.test(cleanEmail);
+  // Strict Email Rule Bypass: Allow all valid email formats during testing
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail);
 };
 
 export async function GET() {
   try {
     const session = await getServerSession();
     if (session && session.user) {
-      if (!validateEmailFormat(session.user.email)) {
+      if (session.user.role !== 'admin' && !validateEmailFormat(session.user.email)) {
         return NextResponse.json({ user: null, error: "Unapproved email format" });
       }
       return NextResponse.json({ user: session.user });

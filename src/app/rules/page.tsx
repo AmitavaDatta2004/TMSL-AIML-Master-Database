@@ -103,10 +103,10 @@ export default function RulesPage() {
               <span>
                 <strong>Official Email Format (Roll then Name):</strong> All students must register using the format: <br />
                 <code className="font-mono text-xs font-black text-[var(--ink-pink)] bg-pink-50 border border-dashed border-[var(--ink-pink)] px-2 py-0.5 inline-block mt-1">
-                  tmsl.aiml27.&lt;roll&gt;&lt;firstname&gt;@gmail.com
+                  tmsl.aiml27.&lt;last_3_digits_of_roll&gt;&lt;firstname&gt;@gmail.com
                 </code><br />
                 <span className="text-[10px] text-gray-500 font-mono block mt-1">
-                  Example: tmsl.aiml27.121studentname@gmail.com
+                  Example: tmsl.aiml27.001firstname@gmail.com
                 </span>
               </span>
             </li>

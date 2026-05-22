@@ -1,6 +1,5 @@
 import { createNeonAuth } from '@neondatabase/auth/next/server';
 import { cookies } from 'next/headers';
-import { isAdminEmail } from '@/lib/db';
 
 const baseUrl = process.env.NEON_AUTH_BASE_URL;
 const cookieSecret = process.env.NEON_AUTH_COOKIE_SECRET || "RisoThemeAIMLMasterSecretCookieKey32Chars!";
@@ -25,10 +24,14 @@ export async function getServerSession() {
     try {
       const session = await auth.getSession();
       if (session && session.data && session.data.user) {
+        // Use the role from the auth provider database, fallback to student
+        const dbRole = (session.data.user as any).role;
+        const isAuthAdmin = dbRole === 'admin' || dbRole === 'administrator';
+        
         return {
           user: {
             ...session.data.user,
-            role: isAdminEmail(session.data.user.email) ? 'admin' : 'student'
+            role: isAuthAdmin ? 'admin' : 'student'
           }
         };
       }

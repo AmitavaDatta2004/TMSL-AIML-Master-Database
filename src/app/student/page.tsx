@@ -6,19 +6,21 @@ import { useAuth } from '../providers';
 import { 
   User, BookOpen, GraduationCap, Users, MapPin, 
   AlertTriangle, Save, CheckCircle2, ChevronRight, 
-  ChevronLeft, Sparkles, LogOut, ArrowLeft, FileText 
+  ChevronLeft, Sparkles, LogOut, ArrowLeft, FileText,
+  Calendar, Download
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 // Default schema structure matching the 75 Excel columns exactly
 const INITIAL_FORM_STATE = {
   // Section 1: General & Contact
-  stream: 'CSE-AIML',
+  stream: '',
   roll_number: '',
   full_name: '',
   first_middle_name: '',
   last_name: '',
   photo_pdf_link: '',
-  gender: 'MALE',
+  gender: '',
   dob: '',
   blood_group: '',
   contact_residence: '',
@@ -30,23 +32,23 @@ const INITIAL_FORM_STATE = {
   github_link: '',
 
   // Section 2: Class X
-  class_x_exam_name: 'WBBSE',
+  class_x_exam_name: '',
   class_x_pass_year: '',
   class_x_board: '',
   class_x_school: '',
-  class_x_medium: 'ENG',
+  class_x_medium: '',
   class_x_std_marks_pct: '',
   class_x_actual_pct: '',
   class_x_math_pct: '',
   class_x_science_pct: '',
-  class_x_comp_app_pct: 'N.A.',
+  class_x_comp_app_pct: '',
 
   // Section 3: Class XII
-  class_xii_exam_name: 'W.B.C.H.S.E',
+  class_xii_exam_name: '',
   class_xii_pass_year: '',
   class_xii_board: '',
   class_xii_school: '',
-  class_xii_medium: 'ENG',
+  class_xii_medium: '',
   class_xii_std_marks_pct: '',
   class_xii_actual_pct: '',
   class_xii_math_pct: '',
@@ -54,19 +56,21 @@ const INITIAL_FORM_STATE = {
   class_xii_chemistry_pct: '',
 
   // Section 4: Diploma & Entrance
-  diploma_exam_name: 'JELET',
-  diploma_rank: 'N.A.',
-  diploma_stream: 'N.A.',
-  diploma_pass_year: 'N.A.',
-  diploma_college: 'N.A.',
-  diploma_university: 'N.A.',
-  diploma_pct: 'N.A.',
-  entrance_exam_name: 'WBJEE',
+  has_diploma: '',
+  diploma_exam_name: '',
+  diploma_rank: '',
+  diploma_stream: '',
+  diploma_pass_year: '',
+  diploma_college: '',
+  diploma_university: '',
+  diploma_pct: '',
+  has_class_xii: '',
+  entrance_exam_name: '',
   entrance_exam_rank: '',
 
   // Section 5: B.Tech Details
   university_reg_no: '',
-  btech_stream: 'CSE-AIML',
+  btech_stream: '',
   btech_course_duration: '2023-2027',
   sem_1_cgpa: '',
   sem_2_cgpa: '',
@@ -74,19 +78,19 @@ const INITIAL_FORM_STATE = {
   sem_4_cgpa: '',
   sem_5_cgpa: '',
   btech_avg_cgpa: '',
-  btech_backlog: 'NO',
-  btech_backlog_count: '0',
-  btech_backlog_subject_1: 'N.A.',
-  btech_backlog_subject_2: 'N.A.',
+  btech_backlog: '',
+  btech_backlog_count: '',
+  btech_backlog_subject_1: '',
+  btech_backlog_subject_2: '',
 
   // Section 6: Family Details
   father_name: '',
   father_occupation: '',
   mother_name: '',
   mother_occupation: '',
-  guardian_name: 'N.A.',
-  guardian_relation: 'N.A.',
-  guardian_occupation: 'N.A.',
+  guardian_name: '',
+  guardian_relation: '',
+  guardian_occupation: '',
 
   // Section 7: Addresses
   perm_address: '',
@@ -94,24 +98,421 @@ const INITIAL_FORM_STATE = {
   perm_city: '',
   perm_pin: '',
   perm_district: '',
-  perm_state: 'WEST BENGAL',
+  perm_state: '',
   
   pres_address: '',
   pres_post_office: '',
   pres_city: '',
   pres_pin: '',
   pres_district: '',
-  pres_state: 'WEST BENGAL',
+  pres_state: '',
 
   // Section 8: Gaps & Declaration
-  physical_disability: 'NO',
-  study_gap: 'NO',
-  study_gap_years: '0',
-  study_gap_period: 'N.A.',
-  study_gap_reason: 'N.A.',
-  work_experience: 'NO',
-  work_experience_mention: 'N.A.',
-  declaration_agree: 'NO'
+  physical_disability: '',
+  study_gap: '',
+  study_gap_years: '',
+  study_gap_period: '',
+  study_gap_reason: '',
+  work_experience: '',
+  work_experience_mention: '',
+  declaration_agree: ''
+};
+
+// Helper functions to convert DOB formats between stored DD-MM-YYYY and HTML5 date picker YYYY-MM-DD
+const convertDDMMYYYYToYYYYMMDD = (dateStr: string): string => {
+  if (!dateStr) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    return dateStr;
+  }
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    const [day, month, year] = parts;
+    if (day.length === 2 && month.length === 2 && year.length === 4) {
+      return `${year}-${month}-${day}`;
+    }
+  }
+  return '';
+};
+
+const convertYYYYMMDDToDDMMYYYY = (dateStr: string): string => {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    const [year, month, day] = parts;
+    if (year.length === 4 && month.length === 2 && day.length === 2) {
+      return `${day}-${month}-${year}`;
+    }
+  }
+  return dateStr;
+};
+
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
+
+// Helper functions for profile progress calculations
+const getRequiredFieldsForTab = (tabIndex: number, formState: any) => {
+  switch (tabIndex) {
+    case 0:
+      return [
+        'roll_number', 'full_name', 'first_middle_name', 'photo_pdf_link', 
+        'gender', 'dob', 'blood_group', 'contact_operational_1', 
+        'email_operational_gmail', 'linkedin_link', 'github_link'
+      ];
+    case 1: // Class 10
+      return [
+        'class_x_exam_name', 'class_x_pass_year', 'class_x_board', 'class_x_school',
+        'class_x_medium', 'class_x_std_marks_pct', 'class_x_actual_pct', 'class_x_math_pct',
+        'class_x_science_pct'
+      ];
+    case 2: // Class 12
+      if (formState.has_class_xii === 'YES') {
+        return [
+          'has_class_xii', 'class_xii_exam_name', 'class_xii_pass_year', 'class_xii_board',
+          'class_xii_school', 'class_xii_medium', 'class_xii_std_marks_pct', 'class_xii_actual_pct',
+          'class_xii_math_pct', 'class_xii_physics_pct', 'class_xii_chemistry_pct'
+        ];
+      } else if (formState.has_class_xii === 'NO') {
+        return ['has_class_xii'];
+      } else {
+        return ['has_class_xii'];
+      }
+    case 3: // Diploma
+      if (formState.has_diploma === 'YES') {
+        return [
+          'has_diploma', 'diploma_exam_name', 'diploma_rank', 'diploma_stream', 'diploma_pass_year',
+          'diploma_college', 'diploma_university', 'diploma_pct'
+        ];
+      } else if (formState.has_diploma === 'NO') {
+        return ['has_diploma'];
+      } else {
+        return ['has_diploma'];
+      }
+    case 4: // Entrance Exam
+      return ['entrance_exam_name', 'entrance_exam_rank'];
+    case 5: // B.Tech Performance
+      const btechReqs = [
+        'university_reg_no', 'btech_stream', 'btech_course_duration', 
+        'sem_1_cgpa', 'sem_2_cgpa', 'sem_3_cgpa', 'sem_4_cgpa', 'sem_5_cgpa', 
+        'btech_avg_cgpa', 'btech_backlog'
+      ];
+      if (formState.btech_backlog === 'YES') {
+        btechReqs.push('btech_backlog_count', 'btech_backlog_subject_1');
+      }
+      return btechReqs;
+    case 6: // Addresses
+      return [
+        'perm_address', 'perm_post_office', 'perm_city', 'perm_pin', 'perm_district', 'perm_state',
+        'pres_address', 'pres_post_office', 'pres_city', 'pres_pin', 'pres_district', 'pres_state'
+      ];
+    case 7: // Family
+      return ['father_name', 'father_occupation', 'mother_name', 'mother_occupation'];
+    case 8: // Gaps & Declaration
+      const gapReqs = ['physical_disability', 'study_gap', 'work_experience', 'declaration_agree'];
+      if (formState.study_gap === 'YES') {
+        gapReqs.push('study_gap_years', 'study_gap_period', 'study_gap_reason');
+      }
+      if (formState.work_experience === 'YES') {
+        gapReqs.push('work_experience_mention');
+      }
+      return gapReqs;
+    default:
+      return [];
+  }
+};
+
+const getTabProgress = (tabIndex: number, formState: any) => {
+  const fields = getRequiredFieldsForTab(tabIndex, formState);
+  if (fields.length === 0) return { filled: 0, total: 0, pct: 100, isComplete: true };
+  
+  let filledCount = 0;
+  fields.forEach(field => {
+    const val = formState[field];
+    if (val !== undefined && val !== null && val.toString().trim() !== '' && val.toString().trim() !== 'NA') {
+      if (field === 'declaration_agree') {
+        if (val === 'YES') {
+          filledCount++;
+        }
+      } else {
+        filledCount++;
+      }
+    }
+  });
+  
+  return {
+    filled: filledCount,
+    total: fields.length,
+    pct: Math.round((filledCount / fields.length) * 100),
+    isComplete: filledCount === fields.length
+  };
+};
+
+interface BrutalistDatePickerProps {
+  value: string;
+  onChange: (value: string) => void;
+}
+
+const parseDDMMYYYY = (dateStr: string): Date | null => {
+  if (!dateStr) return null;
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    const [day, month, year] = parts.map(Number);
+    if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+      return new Date(year, month - 1, day);
+    }
+  }
+  return null;
+};
+
+const formatDDMMYYYY = (date: Date): string => {
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  return `${day}-${month}-${year}`;
+};
+
+const BrutalistDatePicker: React.FC<BrutalistDatePickerProps> = ({ value, onChange }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = React.useRef<HTMLDivElement>(null);
+
+  const selectedDate = React.useMemo(() => parseDDMMYYYY(value), [value]);
+
+  const defaultYear = new Date().getFullYear() - 18;
+  const [viewDate, setViewDate] = useState<Date>(() => {
+    return selectedDate || new Date(defaultYear, 4, 1);
+  });
+
+  useEffect(() => {
+    if (selectedDate) {
+      setViewDate(selectedDate);
+    }
+  }, [selectedDate, isOpen]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const currentYear = new Date().getFullYear();
+  const years = React.useMemo(() => {
+    return Array.from({ length: 61 }, (_, i) => currentYear - 5 - i);
+  }, [currentYear]);
+
+  const year = viewDate.getFullYear();
+  const month = viewDate.getMonth();
+
+  const handlePrevMonth = () => {
+    setViewDate(new Date(year, month - 1, 1));
+  };
+
+  const handleNextMonth = () => {
+    setViewDate(new Date(year, month + 1, 1));
+  };
+
+  const handleMonthChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setViewDate(new Date(year, parseInt(e.target.value, 10), 1));
+  };
+
+  const handleYearChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setViewDate(new Date(parseInt(e.target.value, 10), month, 1));
+  };
+
+  const handleDaySelect = (dayNum: number) => {
+    const newDate = new Date(year, month, dayNum);
+    onChange(formatDDMMYYYY(newDate));
+    setIsOpen(false);
+  };
+
+  const handleClear = () => {
+    onChange('');
+    setIsOpen(false);
+  };
+
+  const handleToday = () => {
+    const today = new Date();
+    onChange(formatDDMMYYYY(today));
+    setViewDate(today);
+    setIsOpen(false);
+  };
+
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const startDayOfWeek = new Date(year, month, 1).getDay();
+  const daysInPrevMonth = new Date(year, month, 0).getDate();
+
+  const gridCells = React.useMemo(() => {
+    const cells = [];
+    for (let i = startDayOfWeek - 1; i >= 0; i--) {
+      cells.push({
+        dayNum: daysInPrevMonth - i,
+        isCurrentMonth: false,
+        key: `prev-${i}`
+      });
+    }
+    for (let i = 1; i <= daysInMonth; i++) {
+      cells.push({
+        dayNum: i,
+        isCurrentMonth: true,
+        key: `curr-${i}`
+      });
+    }
+    const remaining = 42 - cells.length;
+    for (let i = 1; i <= remaining; i++) {
+      cells.push({
+        dayNum: i,
+        isCurrentMonth: false,
+        key: `next-${i}`
+      });
+    }
+    return cells;
+  }, [year, month, daysInMonth, startDayOfWeek, daysInPrevMonth]);
+
+  const isToday = (dayNum: number) => {
+    const today = new Date();
+    return today.getDate() === dayNum && today.getMonth() === month && today.getFullYear() === year;
+  };
+
+  const isSelected = (dayNum: number) => {
+    return selectedDate && selectedDate.getDate() === dayNum && selectedDate.getMonth() === month && selectedDate.getFullYear() === year;
+  };
+
+  return (
+    <div className="relative w-full" ref={containerRef}>
+      <div 
+        onClick={() => setIsOpen(!isOpen)}
+        className="riso-input flex items-center justify-between cursor-pointer select-none bg-white font-mono text-sm"
+        style={{ minHeight: '43.5px' }}
+      >
+        <span className={value ? 'text-[var(--ink-black)] font-bold' : 'text-gray-400'}>
+          {value || 'DD-MM-YYYY'}
+        </span>
+        <Calendar className="w-4 h-4 text-[var(--ink-black)]" />
+      </div>
+
+      {isOpen && (
+        <div className="absolute left-0 mt-2 bg-white border-[2.5px] border-black p-4 z-50 shadow-[6px_6px_0px_#121212] w-[320px] select-none text-black">
+          <div className="flex items-center justify-between gap-1.5 mb-4">
+            <select 
+              value={month} 
+              onChange={handleMonthChange}
+              className="border-2 border-black font-mono font-bold text-xs p-1 bg-white cursor-pointer outline-none flex-1"
+            >
+              {MONTH_NAMES.map((name, i) => (
+                <option key={i} value={i}>{name.toUpperCase()}</option>
+              ))}
+            </select>
+
+            <select 
+              value={year} 
+              onChange={handleYearChange}
+              className="border-2 border-black font-mono font-bold text-xs p-1 bg-white cursor-pointer outline-none w-[80px]"
+            >
+              {years.map(y => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
+
+            <div className="flex items-center gap-1">
+              <button 
+                type="button"
+                onClick={handlePrevMonth}
+                className="border-2 border-black p-1 hover:bg-[var(--ink-pink)] hover:text-white bg-white active:translate-x-0.5 active:translate-y-0.5 transition-all shadow-[2px_2px_0px_#121212] flex items-center justify-center h-[28px] w-[28px]"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button 
+                type="button"
+                onClick={handleNextMonth}
+                className="border-2 border-black p-1 hover:bg-[var(--ink-pink)] hover:text-white bg-white active:translate-x-0.5 active:translate-y-0.5 transition-all shadow-[2px_2px_0px_#121212] flex items-center justify-center h-[28px] w-[28px]"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-7 gap-1 text-center font-mono font-bold text-[10px] text-gray-500 mb-2 border-b border-black pb-1">
+            <span>SU</span><span>MO</span><span>TU</span><span>WE</span><span>TH</span><span>FR</span><span>SA</span>
+          </div>
+
+          <div className="grid grid-cols-7 gap-1">
+            {gridCells.map((cell) => {
+              if (!cell.isCurrentMonth) {
+                return (
+                  <div 
+                    key={cell.key} 
+                    className="aspect-square flex items-center justify-center font-mono text-xs text-gray-300 pointer-events-none"
+                  >
+                    {cell.dayNum}
+                  </div>
+                );
+              }
+              
+              const daySelected = isSelected(cell.dayNum);
+              const dayToday = isToday(cell.dayNum);
+
+              return (
+                <button
+                  key={cell.key}
+                  type="button"
+                  onClick={() => handleDaySelect(cell.dayNum)}
+                  className={`aspect-square flex items-center justify-center font-mono text-xs font-bold border transition-all cursor-pointer select-none
+                    ${daySelected 
+                      ? 'bg-[var(--ink-yellow)] text-black border-2 border-black shadow-[2px_2px_0px_#121212] scale-105 z-10' 
+                      : dayToday 
+                        ? 'border-2 border-dashed border-[var(--ink-blue)] text-[var(--ink-blue)] hover:bg-[var(--ink-pink)] hover:text-white hover:border-black' 
+                        : 'border-transparent hover:border-black hover:bg-[var(--ink-pink)] hover:text-white'
+                    }`}
+                >
+                  {cell.dayNum}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex justify-between items-center mt-4 pt-3 border-t border-dashed border-gray-300">
+            <button
+              type="button"
+              onClick={handleClear}
+              className="px-2.5 py-1 font-mono font-bold text-[10px] border-2 border-black shadow-[2px_2px_0px_#121212] bg-white hover:bg-[var(--ink-pink)] hover:text-white active:translate-x-0.5 active:translate-y-0.5 transition-all"
+            >
+              CLEAR
+            </button>
+            <button
+              type="button"
+              onClick={handleToday}
+              className="px-2.5 py-1 font-mono font-bold text-[10px] border-2 border-black shadow-[2px_2px_0px_#121212] bg-white hover:bg-[var(--ink-pink)] hover:text-white active:translate-x-0.5 active:translate-y-0.5 transition-all"
+            >
+              TODAY
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const getEmbeddableDriveUrl = (url: string) => {
+  if (!url) return '';
+  try {
+    const driveRegExp = /\/file\/d\/([a-zA-Z0-9_-]+)/;
+    const match = url.match(driveRegExp);
+    if (match && match[1]) {
+      return `https://drive.google.com/file/d/${match[1]}/preview`;
+    }
+    const openRegExp = /[?&]id=([a-zA-Z0-9_-]+)/;
+    const matchOpen = url.match(openRegExp);
+    if (matchOpen && matchOpen[1]) {
+      return `https://drive.google.com/file/d/${matchOpen[1]}/preview`;
+    }
+  } catch (e) {
+    // Ignore
+  }
+  return url;
 };
 
 export default function StudentDashboard() {
@@ -122,9 +523,31 @@ export default function StudentDashboard() {
   const [activeTab, setActiveTab] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [hasChanged, setHasChanged] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [dbLoading, setDbLoading] = useState(true);
   const [viewWizard, setViewWizard] = useState(false);
+  const [showPhotoPreview, setShowPhotoPreview] = useState(false);
+
+  const [hasDbRecord, setHasDbRecord] = useState<boolean | null>(null);
+
+  const exportToExcel = () => {
+    // Redirect to the API route which will serve the fully formatted master template
+    window.location.href = '/api/student/export';
+  };
+
+  // Block background scroll when modal is open
+  useEffect(() => {
+    if (showPhotoPreview) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [showPhotoPreview]);
 
   // Redirect if unauthorized
   useEffect(() => {
@@ -144,18 +567,20 @@ export default function StudentDashboard() {
         const res = await fetch(`/api/student/fetch-details?email=${encodeURIComponent(email)}`);
         if (res.ok) {
           const data = await res.json();
-          if (data.record && data.record.details) {
+          if (data.record) {
+            setHasDbRecord(true);
             setFormState(prev => ({
               ...prev,
-              ...data.record.details,
-              // Force Google Email into the primary operational email field (read-only constraint)
+              ...(data.record.details || {}),
+              // Force authenticated Email into the primary operational email field (read-only constraint)
               email_operational_gmail: email,
               full_name: data.record.full_name || prev.full_name,
               roll_number: data.record.roll_number || prev.roll_number,
               stream: data.record.stream || prev.stream,
             }));
           } else {
-            // First time student: Pre-fill Google details
+            setHasDbRecord(false);
+            // First time student: Pre-fill authenticated details
             setFormState(prev => ({
               ...prev,
               email_operational_gmail: email,
@@ -165,6 +590,7 @@ export default function StudentDashboard() {
         }
       } catch (err) {
         console.error("Failed to load submission draft:", err);
+        setHasDbRecord(false);
       } finally {
         setDbLoading(false);
       }
@@ -172,10 +598,92 @@ export default function StudentDashboard() {
     fetchDraft();
   }, [user]);
 
+  // Auto-save draft function
+  const autoSaveDraft = async () => {
+    if (!user) return;
+    setSyncStatus('saving');
+    try {
+      const response = await fetch('/api/student/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: user.email,
+          full_name: formState.full_name,
+          roll_number: formState.roll_number,
+          stream: formState.stream,
+          details: {
+            ...formState,
+            ...(formState.has_class_xii !== 'YES' ? {
+              class_xii_exam_name: 'NA',
+              class_xii_pass_year: 'NA',
+              class_xii_board: 'NA',
+              class_xii_school: 'NA',
+              class_xii_medium: 'NA',
+              class_xii_std_marks_pct: 'NA',
+              class_xii_actual_pct: 'NA',
+              class_xii_math_pct: 'NA',
+              class_xii_physics_pct: 'NA',
+              class_xii_chemistry_pct: 'NA',
+            } : {}),
+            ...(formState.has_diploma !== 'YES' ? {
+              diploma_exam_name: 'NA',
+              diploma_rank: 'NA',
+              diploma_stream: 'NA',
+              diploma_pass_year: 'NA',
+              diploma_college: 'NA',
+              diploma_university: 'NA',
+              diploma_pct: 'NA',
+            } : {}),
+            ...(formState.btech_backlog !== 'YES' ? {
+              btech_backlog_count: '0',
+              btech_backlog_subject_1: 'NA',
+              btech_backlog_subject_2: 'NA',
+            } : {}),
+            ...(formState.study_gap !== 'YES' ? {
+              study_gap_years: '0',
+              study_gap_period: 'NA',
+              study_gap_reason: 'NA',
+            } : {}),
+            ...(formState.work_experience !== 'YES' ? {
+              work_experience_mention: 'NA',
+            } : {})
+          },
+          is_final: false
+        }),
+      });
+
+      if (response.ok) {
+        setSyncStatus('saved');
+        setHasChanged(false);
+      } else {
+        throw new Error("Failed to save draft automatically.");
+      }
+    } catch (err) {
+      console.error("Auto-save failed:", err);
+      setSyncStatus('error');
+    }
+  };
+
+  // Debounced auto-save effect
+  useEffect(() => {
+    if (!hasChanged || !user) return;
+
+    const delayDebounceFn = setTimeout(() => {
+      autoSaveDraft();
+    }, 1500); // 1.5 seconds debounce
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [formState, hasChanged, user]);
+
   // Form value change handler
   const handleInputChange = (field: keyof typeof INITIAL_FORM_STATE, value: string) => {
+    // Normalize any variation of "NA" (na, n.a., N.A, n.a, n/a, N/A etc) to exactly "NA"
+    const normalizedValue = /^n[./]?a\.?$/i.test(value.trim()) ? 'NA' : value;
+
+    setHasChanged(true);
+    setSyncStatus('idle');
     setFormState(prev => {
-      const updated = { ...prev, [field]: value };
+      const updated = { ...prev, [field]: normalizedValue };
       
       // Auto-compute Average CGPA if Semester CGPAs are modified
       if (
@@ -207,6 +715,8 @@ export default function StudentDashboard() {
 
   // Helper to copy Permanent Address to Present Address
   const copyPermanentAddress = () => {
+    setHasChanged(true);
+    setSyncStatus('idle');
     setFormState(prev => ({
       ...prev,
       pres_address: prev.perm_address,
@@ -224,14 +734,60 @@ export default function StudentDashboard() {
     
     // Validations for Final Submission
     if (isFinalSubmit) {
-      if (!formState.roll_number.trim()) {
+      const rollTrimmed = formState.roll_number.trim();
+      if (!rollTrimmed) {
         alert("University Roll Number is required!");
         return;
       }
+      if (!/^\d{11}$/.test(rollTrimmed)) {
+        alert("University Roll Number must be exactly 11 digits!");
+        return;
+      }
+      if (!/^130308(23|24)\d{3}$/.test(rollTrimmed)) {
+        alert("Invalid University Roll Number! Must be exactly 11 digits starting with 130308. Regular entries must contain 23 and lateral entries must contain 24 at positions 7-8 (e.g. 13030823XXX or 13030824XXX).");
+        return;
+      }
+      
+      // Extract last 3 digits and first name from email (e.g. tmsl.aiml27.001biswajit@gmail.com)
+      const emailMatch = user.email.toLowerCase().match(/^tmsl\.aiml27\.(\d{3})([a-z]+)@gmail\.com$/);
+      if (emailMatch) {
+        const email3Digits = emailMatch[1];
+        const emailFirstName = emailMatch[2];
+        const rollLast3 = rollTrimmed.slice(-3);
+        const enteredFirstName = formState.full_name.trim().split(/\s+/)[0].toLowerCase().replace(/[^a-z]/g, '');
+
+        if (email3Digits !== rollLast3) {
+          alert(`Roll Number mismatch! The last 3 digits of your roll number in your email is "${email3Digits}", but your entered roll number ends with "${rollLast3}". Please ensure they match.`);
+          return;
+        }
+
+        if (enteredFirstName && emailFirstName !== enteredFirstName) {
+          alert(`First Name mismatch! The first name in your email is "${emailFirstName}", but your entered name's first name is "${enteredFirstName}". Please ensure they match.`);
+          return;
+        }
+      }
+
       if (!formState.full_name.trim()) {
         alert("Student's Full Name is required!");
         return;
       }
+
+      const contact1 = formState.contact_operational_1.trim();
+      if (!contact1) {
+        alert("Contact Operational 1 is required!");
+        return;
+      }
+      if (!/^\d{10}$/.test(contact1)) {
+        alert("Contact Operational 1 must be exactly 10 digits!");
+        return;
+      }
+
+      const contact2 = formState.contact_operational_2.trim();
+      if (contact2 && !/^\d{10}$/.test(contact2)) {
+        alert("Contact Operational 2 must be exactly 10 digits if provided!");
+        return;
+      }
+
       if (!formState.photo_pdf_link.trim()) {
         alert("Formal Photo PDF Upload Link is required!");
         return;
@@ -255,13 +811,54 @@ export default function StudentDashboard() {
           full_name: formState.full_name,
           roll_number: formState.roll_number,
           stream: formState.stream,
-          details: formState,
+          details: {
+            ...formState,
+            ...(formState.has_class_xii !== 'YES' ? {
+              class_xii_exam_name: 'NA',
+              class_xii_pass_year: 'NA',
+              class_xii_board: 'NA',
+              class_xii_school: 'NA',
+              class_xii_medium: 'NA',
+              class_xii_std_marks_pct: 'NA',
+              class_xii_actual_pct: 'NA',
+              class_xii_math_pct: 'NA',
+              class_xii_physics_pct: 'NA',
+              class_xii_chemistry_pct: 'NA',
+            } : {}),
+            ...(formState.has_diploma !== 'YES' ? {
+              diploma_exam_name: 'NA',
+              diploma_rank: 'NA',
+              diploma_stream: 'NA',
+              diploma_pass_year: 'NA',
+              diploma_college: 'NA',
+              diploma_university: 'NA',
+              diploma_pct: 'NA',
+            } : {}),
+            ...(formState.btech_backlog !== 'YES' ? {
+              btech_backlog_count: '0',
+              btech_backlog_subject_1: 'NA',
+              btech_backlog_subject_2: 'NA',
+            } : {}),
+            ...(formState.study_gap !== 'YES' ? {
+              study_gap_years: '0',
+              study_gap_period: 'NA',
+              study_gap_reason: 'NA',
+            } : {}),
+            ...(formState.work_experience !== 'YES' ? {
+              work_experience_mention: 'NA',
+            } : {})
+          },
           is_final: isFinalSubmit
         }),
       });
 
       if (response.ok) {
         setSaveStatus('success');
+        setHasChanged(false);
+        setSyncStatus('saved');
+        if (isFinalSubmit) {
+          setViewWizard(false);
+        }
         setTimeout(() => setSaveStatus('idle'), 3000);
       } else {
         const errData = await response.json();
@@ -278,12 +875,14 @@ export default function StudentDashboard() {
 
   const tabs = [
     { label: "1. Identity", icon: User },
-    { label: "2. Schooling", icon: BookOpen },
-    { label: "3. Diploma & Entrance", icon: GraduationCap },
-    { label: "4. B.Tech Perf.", icon: GraduationCap },
-    { label: "5. Address Blocks", icon: MapPin },
-    { label: "6. Family Detail", icon: Users },
-    { label: "7. Gaps & Decl.", icon: AlertTriangle }
+    { label: "2. Class X", icon: BookOpen },
+    { label: "3. Class XII", icon: BookOpen },
+    { label: "4. Diploma", icon: GraduationCap },
+    { label: "5. Entrance Exam", icon: GraduationCap },
+    { label: "6. B.Tech Perf.", icon: GraduationCap },
+    { label: "7. Address Blocks", icon: MapPin },
+    { label: "8. Family Detail", icon: Users },
+    { label: "9. Gaps & Decl.", icon: AlertTriangle }
   ];
 
   if (authLoading || dbLoading) {
@@ -299,9 +898,47 @@ export default function StudentDashboard() {
     );
   }
 
+  // If user is a pending admin (role not 'admin' AND they don't have a student DB record)
+  // We wait for dbLoading to finish so hasDbRecord is not null.
+  if (!dbLoading && user && user.role !== 'admin' && hasDbRecord === false) {
+    return (
+      <div className="flex-1 flex items-center justify-center p-4 bg-[var(--bg-paper)] font-mono animate-fadeIn">
+        <div className="bg-white border-[3px] border-black p-8 max-w-md w-full shadow-[8px_8px_0px_var(--ink-pink)] text-center relative">
+          <div className="absolute top-0 right-0 bg-[var(--ink-pink)] text-white text-[10px] font-black px-3 py-1.5 uppercase border-l-[3px] border-b-[3px] border-black">
+            ACCOUNT PENDING
+          </div>
+          <AlertTriangle className="w-14 h-14 text-[var(--ink-pink)] mx-auto mb-5 drop-shadow-[2px_2px_0px_#121212]" />
+          <h2 className="text-xl font-black mb-3 uppercase text-black">Verification Required</h2>
+          <div className="bg-pink-50 border-2 border-[var(--ink-pink)] p-4 text-sm text-gray-800 mb-6 font-semibold leading-relaxed shadow-[3px_3px_0px_var(--ink-pink)]">
+            Your administrative account ({user.email}) has been created but is currently awaiting database verification. 
+            <br/><br/>
+            You cannot access the student dossier or admin terminal until your role is explicitly granted by the system owner.
+          </div>
+          <button
+            onClick={logout}
+            className="bg-black hover:bg-[var(--ink-pink)] text-white px-6 py-3.5 text-sm font-black transition-colors w-full uppercase border-2 border-black hover:border-[var(--ink-pink)] shadow-[4px_4px_0px_#121212] flex justify-center items-center gap-2"
+          >
+            <LogOut className="w-4 h-4" /> Sign Out
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (!viewWizard) {
     return (
       <div className="flex-1 flex flex-col p-4 md:p-8 max-w-5xl mx-auto w-full gap-6">
+        {saveStatus === 'success' && (
+          <div className="bg-green-50 border-2 border-[var(--ink-green)] text-[var(--ink-green)] p-3 text-xs font-bold font-mono shadow-[3px_3px_0px_var(--ink-green)] flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4" /> SUCCESS: PROFILE RECORD SAVED SECURELY IN NEON DATABASE!
+          </div>
+        )}
+        {saveStatus === 'error' && (
+          <div className="bg-red-50 border-2 border-red-500 text-red-700 p-3 text-xs font-bold font-mono shadow-[3px_3px_0px_red]">
+            ⚠️ ERROR: {errorMessage}
+          </div>
+        )}
+        
         {/* A. Dashboard Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b-2 border-[var(--ink-black)] pb-6">
           <div>
@@ -337,36 +974,66 @@ export default function StudentDashboard() {
           {/* Submission Status Card */}
           <div className="md:col-span-2 flex flex-col gap-6">
             
-            {/* Status Alert Banner */}
-            {formState.declaration_agree === 'YES' ? (
-              <div className="riso-card bg-green-50 border-[var(--ink-green)] text-[var(--ink-green)] flex flex-col gap-3 shadow-[4px_4px_0px_var(--ink-green)]">
-                <div className="flex items-center gap-2.5">
-                  <div className="bg-[var(--ink-green)] text-white p-1 border border-black">
-                    <CheckCircle2 className="w-5 h-5" />
+            {/* Status Alert Banner / Profile Completion Progress */}
+            {(() => {
+              const tabProgresses = tabs.map((_, idx) => getTabProgress(idx, formState));
+              const totalFilled = tabProgresses.reduce((sum, p) => sum + p.filled, 0);
+              const totalRequired = tabProgresses.reduce((sum, p) => sum + p.total, 0);
+              const overallPct = totalRequired > 0 ? Math.round((totalFilled / totalRequired) * 100) : 0;
+              const isProfileComplete = overallPct === 100;
+
+              return (
+                <div className={`riso-card flex flex-col gap-4 border-2 border-black shadow-[4px_4px_0px_#121212] ${
+                  isProfileComplete ? 'bg-green-50/50 border-[var(--ink-green)] text-[var(--ink-green)]' : 'bg-amber-50 text-amber-600'
+                }`}>
+                  <div className="flex items-center gap-2.5">
+                    <div className={`p-1 border border-black text-white ${
+                      isProfileComplete ? 'bg-[var(--ink-green)]' : 'bg-amber-500'
+                    }`}>
+                      {isProfileComplete ? <CheckCircle2 className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
+                    </div>
+                    <h3 className="text-lg font-black uppercase tracking-tight text-black">
+                      PROFILE COMPLETION STATUS: {overallPct}% COMPLETE
+                    </h3>
                   </div>
-                  <h3 className="text-lg font-black uppercase tracking-tight">
-                    SUBMISSION STATUS: FINALIZED & LOCKED
-                  </h3>
-                </div>
-                <p className="text-xs font-semibold text-gray-700 leading-relaxed">
-                  Your Master Database entry has been successfully locked and submitted to the department. Your details are frozen for placement sheet generation. If you need to revise any data, please contact your department coordinator.
-                </p>
-              </div>
-            ) : (
-              <div className="riso-card bg-amber-50 border-amber-500 text-amber-600 flex flex-col gap-3 shadow-[4px_4px_0px_#d97706]">
-                <div className="flex items-center gap-2.5">
-                  <div className="bg-amber-500 text-white p-1 border border-black">
-                    <AlertTriangle className="w-5 h-5" />
+
+                  <div className="w-full bg-white border-2 border-black h-6 relative shadow-[2px_2px_0px_#121212] overflow-hidden">
+                    <div 
+                      className={`h-full border-r-2 border-black transition-all duration-300 ${
+                        isProfileComplete ? 'bg-[var(--ink-green)]' : 'bg-[var(--ink-yellow)]'
+                      }`}
+                      style={{ width: `${overallPct}%` }}
+                    ></div>
+                    <div className="absolute inset-0 flex items-center justify-center font-mono font-black text-[10px] text-black">
+                      {overallPct}% FILLED ({totalFilled}/{totalRequired} FIELDS)
+                    </div>
                   </div>
-                  <h3 className="text-lg font-black uppercase tracking-tight">
-                    SUBMISSION STATUS: DRAFT (PENDING ACTION)
-                  </h3>
+
+                  <p className="text-xs font-semibold text-gray-700 leading-relaxed">
+                    Your placement profile is always editable. Ensure your details are 100% complete before placement sheet generation. Below is the section-wise status checklist:
+                  </p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2 font-mono text-[11px]">
+                    {tabs.map((tab, idx) => {
+                      const progress = tabProgresses[idx];
+                      return (
+                        <div key={idx} className="flex items-center gap-2 border border-black p-2 bg-white text-black shadow-[2px_2px_0px_#121212]">
+                          <div className={`w-4 h-4 border border-black flex items-center justify-center text-[10px] font-bold ${
+                            progress.isComplete ? 'bg-[var(--ink-green)] text-white' : 'bg-amber-100 text-amber-800'
+                          }`}>
+                            {progress.isComplete ? '✓' : '•'}
+                          </div>
+                          <div className="font-bold flex-1 truncate">{tab.label.replace(/^\d+\.\s+/, '')}</div>
+                          <div className="text-gray-500 text-[10px]">
+                            {progress.filled}/{progress.total}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-                <p className="text-xs font-semibold text-gray-700 leading-relaxed">
-                  Your placement profile is currently in **Draft** state. You have not submitted the final declaration yet. Please click the button below to fill out the 86 required academic and personal parameters before the final lock.
-                </p>
-              </div>
-            )}
+              );
+            })()}
 
             {/* Dossier Information Card */}
             <div className="riso-card flex flex-col gap-4">
@@ -408,12 +1075,18 @@ export default function StudentDashboard() {
                 </div>
               </div>
 
-              <div className="flex gap-4 mt-2">
+              <div className="flex flex-col sm:flex-row gap-4 mt-2">
                 <button 
                   onClick={() => setViewWizard(true)}
                   className="riso-btn riso-btn-pink w-full justify-center py-3 text-sm font-black shadow-[3px_3px_0px_#121212]"
                 >
-                  {formState.declaration_agree === 'YES' ? "VIEW / EDIT MY DATA DETAILS" : "ENTER DATABASE WIZARD FORM"}
+                  ENTER / EDIT DATABASE WIZARD FORM
+                </button>
+                <button 
+                  onClick={exportToExcel}
+                  className="riso-btn bg-white border-2 border-black hover:bg-[var(--ink-green)] hover:text-white text-black w-full justify-center py-3 text-sm font-black shadow-[3px_3px_0px_#121212] flex items-center gap-2"
+                >
+                  <Download className="w-4 h-4" /> EXPORT MY DETAILS
                 </button>
               </div>
             </div>
@@ -431,15 +1104,15 @@ export default function StudentDashboard() {
               <div className="bg-white text-[var(--ink-black)] p-3 border border-black shadow-[2px_2px_0px_#121212] flex flex-col gap-2.5">
                 <div className="flex justify-between items-center text-xs font-semibold border-b border-gray-100 pb-1.5">
                   <span className="text-gray-500 uppercase font-mono text-[10px]">Average CGPA</span>
-                  <span className="font-bold">{formState.btech_avg_cgpa || "N.A."}</span>
+                  <span className="font-bold">{formState.btech_avg_cgpa || "NA"}</span>
                 </div>
                 <div className="flex justify-between items-center text-xs font-semibold border-b border-gray-100 pb-1.5">
                   <span className="text-gray-500 uppercase font-mono text-[10px]">Class X Pct</span>
-                  <span className="font-bold">{formState.class_x_actual_pct || "N.A."}%</span>
+                  <span className="font-bold">{formState.class_x_actual_pct || "NA"}%</span>
                 </div>
                 <div className="flex justify-between items-center text-xs font-semibold border-b border-gray-100 pb-1.5">
                   <span className="text-gray-500 uppercase font-mono text-[10px]">Class XII Pct</span>
-                  <span className="font-bold">{formState.class_xii_actual_pct || "N.A."}%</span>
+                  <span className="font-bold">{formState.class_xii_actual_pct || "NA"}%</span>
                 </div>
                 <div className="flex justify-between items-center text-xs font-semibold border-b border-gray-100 pb-1.5">
                   <span className="text-gray-500 uppercase font-mono text-[10px]">Backlog Active</span>
@@ -493,26 +1166,58 @@ export default function StudentDashboard() {
       {/* A. Header Bar */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b-2 border-[var(--ink-black)] pb-6">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="riso-badge riso-badge-blue text-white">STUDENT SECTION</span>
-            <span className="riso-badge riso-badge-yellow text-black font-mono">
-              {formState.declaration_agree === 'YES' ? "SUBMITTED" : "DRAFT STATE"}
+            {(() => {
+              const tabProgresses = tabs.map((_, idx) => getTabProgress(idx, formState));
+              const totalFilled = tabProgresses.reduce((sum, p) => sum + p.filled, 0);
+              const totalRequired = tabProgresses.reduce((sum, p) => sum + p.total, 0);
+              const overallPct = totalRequired > 0 ? Math.round((totalFilled / totalRequired) * 100) : 0;
+              return (
+                <span className={`riso-badge font-mono text-black ${
+                  overallPct === 100 ? 'bg-[var(--ink-green)] text-white font-bold' : 'bg-[var(--ink-yellow)] text-black'
+                }`}>
+                  {overallPct === 100 ? "PROFILE COMPLETED" : "PROFILE INCOMPLETE"}
+                </span>
+              );
+            })()}
+            <span className={`font-mono text-[10px] font-black uppercase tracking-wider px-2 py-0.5 border-2 border-black flex items-center gap-1.5 shadow-[1.5px_1.5px_0px_#121212] ${
+              syncStatus === 'saving' ? 'bg-amber-100 text-amber-700 border-amber-500' :
+              syncStatus === 'saved' ? 'bg-green-100 text-green-700 border-green-500' :
+              syncStatus === 'error' ? 'bg-red-100 text-red-700 border-red-500' :
+              'bg-gray-100 text-gray-600 border-gray-400'
+            }`}>
+              <span className={`w-2 h-2 rounded-full ${
+                syncStatus === 'saving' ? 'bg-amber-500 animate-ping' :
+                syncStatus === 'saved' ? 'bg-green-500' :
+                syncStatus === 'error' ? 'bg-red-500' :
+                'bg-gray-400'
+              }`}></span>
+              {syncStatus === 'saving' ? 'Auto-saving...' :
+               syncStatus === 'saved' ? 'Draft Saved' :
+               syncStatus === 'error' ? 'Sync Error' :
+               'Changes pending'}
             </span>
           </div>
           <h2 className="text-3xl font-black text-[var(--ink-black)] mt-2 uppercase tracking-tight">
             PLACEMENT DATABASE RECORD WIZARD
           </h2>
-          <p className="text-xs font-mono text-gray-500 uppercase tracking-widest mt-1">
+          <p className="text-xs font-mono text-gray-500 tracking-widest mt-1">
             Student: <span className="font-bold text-black">{user?.name}</span> • Connected: <span className="font-bold text-black">{user?.email}</span>
           </p>
         </div>
 
         <div className="flex gap-3">
           <button 
-            onClick={() => setViewWizard(false)}
+            onClick={() => {
+              if (hasChanged) {
+                handleSaveForm(false);
+              }
+              setViewWizard(false);
+            }}
             className="riso-btn riso-btn-secondary text-xs shadow-[2px_2px_0px_#121212] flex items-center gap-1.5"
           >
-            <ArrowLeft className="w-3.5 h-3.5" /> BACK TO DOSSIER
+            <ArrowLeft className="w-3.5 h-3.5" /> BACK TO PROFILE
           </button>
           <button 
             onClick={() => handleSaveForm(false)}
@@ -530,10 +1235,10 @@ export default function StudentDashboard() {
         </div>
       </div>
 
-      {/* Save Draft Action Toast */}
+      {/* Save Action Toast */}
       {saveStatus === 'success' && (
         <div className="bg-green-50 border-2 border-[var(--ink-green)] text-[var(--ink-green)] p-3 text-xs font-bold font-mono shadow-[3px_3px_0px_var(--ink-green)] flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4" /> SUCCESS: DRAFT PERSISTED SECURELY IN NEON DATABASE!
+          <CheckCircle2 className="w-4 h-4" /> SUCCESS: PROFILE RECORD SAVED SECURELY IN NEON DATABASE!
         </div>
       )}
       {saveStatus === 'error' && (
@@ -543,18 +1248,27 @@ export default function StudentDashboard() {
       )}
 
       {/* B. Dense Wizard Tabs Navigation */}
-      <div className="flex overflow-x-auto border-b-2 border-[var(--ink-black)] gap-1 scrollbar-thin">
+      <div className="flex flex-wrap border-b-2 border-[var(--ink-black)] gap-1 pb-1">
         {tabs.map((tab, idx) => {
           const Icon = tab.icon;
+          const progress = getTabProgress(idx, formState);
           return (
             <button
               key={idx}
               onClick={() => setActiveTab(idx)}
-              className={`flex items-center gap-2 riso-step-tab whitespace-nowrap text-xs font-bold py-2.5 px-4 border-b-0 ${
+              className={`flex items-center gap-2.5 riso-step-tab whitespace-nowrap text-xs font-bold py-2.5 px-4 border-b-0 ${
                 activeTab === idx ? 'active' : ''
               }`}
             >
-              <Icon className="w-3.5 h-3.5" /> {tab.label}
+              <Icon className="w-3.5 h-3.5" />
+              <span>{tab.label}</span>
+              <span className={`inline-flex items-center justify-center font-mono text-[9px] h-[18px] min-w-[18px] px-1 border border-black font-black leading-none ${
+                progress.isComplete 
+                  ? 'bg-[var(--ink-green)] text-white' 
+                  : 'bg-[var(--ink-yellow)] text-black'
+              }`}>
+                {progress.isComplete ? '✓' : `${progress.filled}/${progress.total}`}
+              </span>
             </button>
           );
         })}
@@ -577,10 +1291,8 @@ export default function StudentDashboard() {
                 onChange={(e) => handleInputChange('stream', e.target.value)}
                 className="riso-select"
               >
+                <option value="">Select Stream</option>
                 <option value="CSE-AIML">CSE-AIML (B.TECH)</option>
-                <option value="CSE">CSE (B.TECH)</option>
-                <option value="IT">IT (B.TECH)</option>
-                <option value="CSBS">CSBS (B.TECH)</option>
               </select>
             </div>
 
@@ -592,7 +1304,7 @@ export default function StudentDashboard() {
                 value={formState.roll_number} 
                 onChange={(e) => handleInputChange('roll_number', e.target.value)}
                 className="riso-input"
-                placeholder="Ex: 13000223045"
+                placeholder="Ex: 13030823XXX (or 13030824XXX for lateral)"
               />
             </div>
 
@@ -603,7 +1315,7 @@ export default function StudentDashboard() {
                 value={formState.full_name} 
                 onChange={(e) => handleInputChange('full_name', e.target.value)}
                 className="riso-input"
-                placeholder="Ex: BISWAJIT DEBNATH"
+                placeholder="Ex: RAHUL SHARMA"
               />
             </div>
 
@@ -614,18 +1326,18 @@ export default function StudentDashboard() {
                 value={formState.first_middle_name} 
                 onChange={(e) => handleInputChange('first_middle_name', e.target.value)}
                 className="riso-input"
-                placeholder="Ex: BISWAJIT"
+                placeholder="Ex: RAHUL"
               />
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="tech-label">Last Name *</label>
+              <label className="tech-label">Last Name</label>
               <input 
                 type="text" 
                 value={formState.last_name} 
                 onChange={(e) => handleInputChange('last_name', e.target.value)}
                 className="riso-input"
-                placeholder="Ex: DEBNATH"
+                placeholder="Ex: DEBNATH (leave blank if none)"
               />
             </div>
 
@@ -636,8 +1348,57 @@ export default function StudentDashboard() {
                 value={formState.photo_pdf_link} 
                 onChange={(e) => handleInputChange('photo_pdf_link', e.target.value)}
                 className="riso-input"
-                placeholder="G-Drive / Cloud PDF URL Link"
+                placeholder="Write Google Drive Link (Link must be public)"
               />
+              {formState.photo_pdf_link && /^https?:\/\/.+/.test(formState.photo_pdf_link) && (
+                <div className="mt-2 flex flex-col gap-2">
+                  <div className="flex gap-2">
+                    <a 
+                      href={formState.photo_pdf_link} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="px-2.5 py-1 font-mono font-bold text-[10px] border-2 border-black shadow-[2px_2px_0px_#121212] bg-white hover:bg-[var(--ink-pink)] hover:text-white active:translate-x-0.5 active:translate-y-0.5 transition-all flex items-center gap-1"
+                    >
+                      <span>🔗</span> OPEN LINK
+                    </a>
+                    <button 
+                      type="button"
+                      onClick={() => setShowPhotoPreview(true)}
+                      className="px-2.5 py-1 font-mono font-bold text-[10px] border-2 border-black shadow-[2px_2px_0px_#121212] bg-[var(--ink-yellow)] hover:bg-[var(--ink-black)] hover:text-white active:translate-x-0.5 active:translate-y-0.5 transition-all flex items-center gap-1"
+                    >
+                      <span>👁</span> PREVIEW DOCUMENT
+                    </button>
+                  </div>
+                  {showPhotoPreview && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm animate-fadeIn">
+                      <div className="relative w-full max-w-4xl max-h-[95vh] bg-white border-4 border-black shadow-[8px_8px_0px_#121212] flex flex-col">
+                        <div className="bg-[var(--ink-pink)] text-white p-3 flex justify-between items-center border-b-4 border-black">
+                          <div className="font-black text-sm uppercase tracking-wider flex items-center gap-2">
+                            <span>👁</span> PREVIEW MODE
+                          </div>
+                          <button 
+                            onClick={() => setShowPhotoPreview(false)}
+                            className="bg-white text-black px-3 py-1 text-xs font-black hover:bg-black hover:text-white border-2 border-black transition-colors"
+                          >
+                            CLOSE ✕
+                          </button>
+                        </div>
+                        <div className="p-3 flex-grow overflow-hidden bg-gray-50 relative">
+                          <div className="text-[10px] font-mono bg-black text-white p-1 mb-2 flex justify-between items-center">
+                            <span>LIVE GOOGLE DRIVE / CLOUD PREVIEW</span>
+                            <span className="text-[9px] text-gray-400 font-bold uppercase hidden sm:block">(MUST BE PUBLIC LINK)</span>
+                          </div>
+                          <iframe 
+                            src={getEmbeddableDriveUrl(formState.photo_pdf_link)} 
+                            className="w-full h-[65vh] sm:h-[75vh] border-2 border-black bg-white" 
+                            allow="autoplay"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="flex flex-col gap-1.5">
@@ -647,52 +1408,58 @@ export default function StudentDashboard() {
                 onChange={(e) => handleInputChange('gender', e.target.value)}
                 className="riso-select"
               >
+                <option value="">Select Gender</option>
                 <option value="MALE">MALE</option>
                 <option value="FEMALE">FEMALE</option>
               </select>
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="tech-label">Date of Birth (DD-MM-YYYY) *</label>
-              <input 
-                type="text" 
+              <label className="tech-label">Date of Birth *</label>
+              <BrutalistDatePicker 
                 value={formState.dob} 
-                onChange={(e) => handleInputChange('dob', e.target.value)}
-                className="riso-input"
-                placeholder="Ex: 14-08-2005"
+                onChange={(val) => handleInputChange('dob', val)} 
               />
             </div>
 
             <div className="flex flex-col gap-1.5">
               <label className="tech-label">Blood Group *</label>
-              <input 
-                type="text" 
+              <select 
                 value={formState.blood_group} 
                 onChange={(e) => handleInputChange('blood_group', e.target.value)}
-                className="riso-input"
-                placeholder="Ex: O+ / AB-"
-              />
+                className="riso-select"
+              >
+                <option value="">Select Blood Group</option>
+                <option value="A+">A+</option>
+                <option value="A-">A-</option>
+                <option value="B+">B+</option>
+                <option value="B-">B-</option>
+                <option value="AB+">AB+</option>
+                <option value="AB-">AB-</option>
+                <option value="O+">O+</option>
+                <option value="O-">O-</option>
+              </select>
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="tech-label">Contact Operational 1 (Unalterable) *</label>
+              <label className="tech-label">Contact Operational 1 *</label>
               <input 
                 type="text" 
                 maxLength={10}
                 value={formState.contact_operational_1} 
-                onChange={(e) => handleInputChange('contact_operational_1', e.target.value)}
+                onChange={(e) => handleInputChange('contact_operational_1', e.target.value.replace(/\D/g, ''))}
                 className="riso-input"
                 placeholder="10 DIGIT MOB"
               />
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="tech-label">Contact Operational 2 (Optional)</label>
+              <label className="tech-label">Contact Operational 2</label>
               <input 
                 type="text" 
                 maxLength={10}
                 value={formState.contact_operational_2} 
-                onChange={(e) => handleInputChange('contact_operational_2', e.target.value)}
+                onChange={(e) => handleInputChange('contact_operational_2', e.target.value.replace(/\D/g, ''))}
                 className="riso-input"
                 placeholder="10 DIGIT SECONDARY MOB"
               />
@@ -710,7 +1477,7 @@ export default function StudentDashboard() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="tech-label">Primary Email (Google Auth Bound) *</label>
+              <label className="tech-label">Primary Email (Registered Account) *</label>
               <input 
                 type="email" 
                 value={formState.email_operational_gmail} 
@@ -754,361 +1521,273 @@ export default function StudentDashboard() {
           </div>
         )}
 
-        {/* TAB 2: SCHOOLING */}
+        {/* TAB 2: CLASS X */}
         {activeTab === 1 && (
-          <div className="flex flex-col gap-8">
-            {/* Class X */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <h3 className="md:col-span-3 font-black text-lg text-[var(--ink-blue)] border-b pb-2 mb-2 uppercase tracking-wide">
-                SECTION 2: CLASS X ACADEMICS
-              </h3>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="tech-label">Name of Examination *</label>
-                <input 
-                  type="text" 
-                  value={formState.class_x_exam_name} 
-                  onChange={(e) => handleInputChange('class_x_exam_name', e.target.value)}
-                  className="riso-input"
-                  placeholder="Ex: WBBSE / CBSE / ICSE"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="tech-label">Year of Pass Out *</label>
-                <input 
-                  type="text" 
-                  value={formState.class_x_pass_year} 
-                  onChange={(e) => handleInputChange('class_x_pass_year', e.target.value)}
-                  className="riso-input"
-                  placeholder="Ex: 2021"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="tech-label">Board / Council Name (Abbreviated) *</label>
-                <input 
-                  type="text" 
-                  value={formState.class_x_board} 
-                  onChange={(e) => handleInputChange('class_x_board', e.target.value)}
-                  className="riso-input"
-                  placeholder="Ex: WBBSE / CBSE"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="tech-label">School Name *</label>
-                <input 
-                  type="text" 
-                  value={formState.class_x_school} 
-                  onChange={(e) => handleInputChange('class_x_school', e.target.value)}
-                  className="riso-input"
-                  placeholder="Full School Name"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="tech-label">Medium of Study *</label>
-                <select 
-                  value={formState.class_x_medium} 
-                  onChange={(e) => handleInputChange('class_x_medium', e.target.value)}
-                  className="riso-select"
-                >
-                  <option value="ENG">ENGLISH</option>
-                  <option value="BENG">BENGALI</option>
-                  <option value="HINDI">HINDI</option>
-                </select>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="tech-label">Standard Marks % (No % Sign) *</label>
-                <input 
-                  type="text" 
-                  value={formState.class_x_std_marks_pct} 
-                  onChange={(e) => handleInputChange('class_x_std_marks_pct', e.target.value)}
-                  className="riso-input"
-                  placeholder="Ex: 85.5"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="tech-label">Actual Percentage (Total Marks Calc) *</label>
-                <input 
-                  type="text" 
-                  value={formState.class_x_actual_pct} 
-                  onChange={(e) => handleInputChange('class_x_actual_pct', e.target.value)}
-                  className="riso-input"
-                  placeholder="Ex: 85.43"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="tech-label">Maths Marks % (No % Sign) *</label>
-                <input 
-                  type="text" 
-                  value={formState.class_x_math_pct} 
-                  onChange={(e) => handleInputChange('class_x_math_pct', e.target.value)}
-                  className="riso-input"
-                  placeholder="Ex: 92"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="tech-label">Science Group (Phy+Chem+Bio) % *</label>
-                <input 
-                  type="text" 
-                  value={formState.class_x_science_pct} 
-                  onChange={(e) => handleInputChange('class_x_science_pct', e.target.value)}
-                  className="riso-input"
-                  placeholder="Ex: 88"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="tech-label">Computer Application % (If Any)</label>
-                <input 
-                  type="text" 
-                  value={formState.class_x_comp_app_pct} 
-                  onChange={(e) => handleInputChange('class_x_comp_app_pct', e.target.value)}
-                  className="riso-input"
-                  placeholder="Ex: 96 or N.A."
-                />
-              </div>
-            </div>
-
-            {/* Class XII */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 border-t border-dashed border-black pt-6">
-              <h3 className="md:col-span-3 font-black text-lg text-[var(--ink-blue)] pb-2 mb-2 uppercase tracking-wide">
-                SECTION 3: CLASS XII ACADEMICS
-              </h3>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="tech-label">Name of Examination *</label>
-                <input 
-                  type="text" 
-                  value={formState.class_xii_exam_name} 
-                  onChange={(e) => handleInputChange('class_xii_exam_name', e.target.value)}
-                  className="riso-input"
-                  placeholder="Ex: WBCHSE / CBSE / ISC"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="tech-label">Year of Pass Out *</label>
-                <input 
-                  type="text" 
-                  value={formState.class_xii_pass_year} 
-                  onChange={(e) => handleInputChange('class_xii_pass_year', e.target.value)}
-                  className="riso-input"
-                  placeholder="Ex: 2023"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="tech-label">Board / Council Name (Abbreviated) *</label>
-                <input 
-                  type="text" 
-                  value={formState.class_xii_board} 
-                  onChange={(e) => handleInputChange('class_xii_board', e.target.value)}
-                  className="riso-input"
-                  placeholder="Ex: W.B.C.H.S.E / CBSE"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="tech-label">School Name *</label>
-                <input 
-                  type="text" 
-                  value={formState.class_xii_school} 
-                  onChange={(e) => handleInputChange('class_xii_school', e.target.value)}
-                  className="riso-input"
-                  placeholder="Full School Name"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="tech-label">Medium of Study *</label>
-                <select 
-                  value={formState.class_xii_medium} 
-                  onChange={(e) => handleInputChange('class_xii_medium', e.target.value)}
-                  className="riso-select"
-                >
-                  <option value="ENG">ENGLISH</option>
-                  <option value="BENG">BENGALI</option>
-                  <option value="HINDI">HINDI</option>
-                </select>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="tech-label">Standard Marks % (No % Sign) *</label>
-                <input 
-                  type="text" 
-                  value={formState.class_xii_std_marks_pct} 
-                  onChange={(e) => handleInputChange('class_xii_std_marks_pct', e.target.value)}
-                  className="riso-input"
-                  placeholder="Ex: 82.2"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="tech-label">Actual Percentage (Total Marks Calc) *</label>
-                <input 
-                  type="text" 
-                  value={formState.class_xii_actual_pct} 
-                  onChange={(e) => handleInputChange('class_xii_actual_pct', e.target.value)}
-                  className="riso-input"
-                  placeholder="Ex: 82.20"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="tech-label">Maths Marks % *</label>
-                <input 
-                  type="text" 
-                  value={formState.class_xii_math_pct} 
-                  onChange={(e) => handleInputChange('class_xii_math_pct', e.target.value)}
-                  className="riso-input"
-                  placeholder="Maths Marks"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="tech-label">Physics Marks % *</label>
-                <input 
-                  type="text" 
-                  value={formState.class_xii_physics_pct} 
-                  onChange={(e) => handleInputChange('class_xii_physics_pct', e.target.value)}
-                  className="riso-input"
-                  placeholder="Physics Marks"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="tech-label">Chemistry Marks % *</label>
-                <input 
-                  type="text" 
-                  value={formState.class_xii_chemistry_pct} 
-                  onChange={(e) => handleInputChange('class_xii_chemistry_pct', e.target.value)}
-                  className="riso-input"
-                  placeholder="Chemistry Marks"
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* TAB 3: DIPLOMA & ENTRANCE */}
-        {activeTab === 2 && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <h3 className="md:col-span-3 font-black text-lg text-[var(--ink-green)] border-b pb-2 mb-2 uppercase tracking-wide">
-              SECTION 4: DIPLOMA & ENTRANCE DETAILS
+            <h3 className="md:col-span-3 font-black text-lg text-[var(--ink-blue)] border-b pb-2 mb-2 uppercase tracking-wide">
+              SECTION 2: CLASS X ACADEMICS
             </h3>
 
-            <div className="md:col-span-3 bg-yellow-50 border-2 border-[var(--ink-yellow)] p-4 text-xs font-semibold leading-relaxed">
-              ⚠️ Note: If you entered B.Tech directly via WBJEE/JEE Mains, fill in the Entrance Exam section and type "N.A." or "0" in the Diploma fields as pre-filled.
+            <div className="md:col-span-3 bg-blue-50 border-2 border-[var(--ink-blue)] p-4 text-xs font-semibold text-gray-700 leading-relaxed shadow-[3px_3px_0px_#121212]">
+              <p className="font-black text-[var(--ink-blue)] uppercase mb-1">💡 Understanding Class X Marks:</p>
+              <ul className="list-disc pl-4 space-y-1">
+                <li><strong>Standard Marks %:</strong> Enter the percentage calculated according to your board/council rules (e.g., best of 5/6 subjects as reported on your official marksheet). Do not insert the "%" sign.</li>
+                <li><strong>Actual Percentage:</strong> Strictly calculate as: <code className="bg-gray-100 px-1 border border-black font-mono font-bold text-[10px]">(Total Marks Obtained ÷ Total Marks Appeared) × 100</code>. Include all subjects you appeared for. Do not round off (e.g., if 85.43%, enter 85.43).</li>
+              </ul>
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="tech-label">Entrance Exam Name (B.Tech Intake) *</label>
-              <input 
-                type="text" 
-                value={formState.entrance_exam_name} 
-                onChange={(e) => handleInputChange('entrance_exam_name', e.target.value)}
-                className="riso-input"
-                placeholder="Ex: WBJEE / JEE MAIN"
-              />
+              <label className="tech-label">Name of Examination *</label>
+              <input type="text" value={formState.class_x_exam_name} onChange={(e) => handleInputChange('class_x_exam_name', e.target.value)} className="riso-input" placeholder="Ex: WBBSE / CBSE / ICSE" />
             </div>
-
             <div className="flex flex-col gap-1.5">
-              <label className="tech-label">Entrance Exam Rank *</label>
-              <input 
-                type="text" 
-                value={formState.entrance_exam_rank} 
-                onChange={(e) => handleInputChange('entrance_exam_rank', e.target.value)}
-                className="riso-input"
-                placeholder="Ex: 12045"
-              />
+              <label className="tech-label">Year of Pass Out *</label>
+              <input type="text" value={formState.class_x_pass_year} onChange={(e) => handleInputChange('class_x_pass_year', e.target.value)} className="riso-input" placeholder="Ex: 2021" />
             </div>
-
-            <div className="md:col-span-3 border-t border-dashed border-black my-2"></div>
-
             <div className="flex flex-col gap-1.5">
-              <label className="tech-label">Diploma Entrance Test Name</label>
-              <input 
-                type="text" 
-                value={formState.diploma_exam_name} 
-                onChange={(e) => handleInputChange('diploma_exam_name', e.target.value)}
-                className="riso-input"
-              />
+              <label className="tech-label">Board / Council Name (Abbreviated) *</label>
+              <input type="text" value={formState.class_x_board} onChange={(e) => handleInputChange('class_x_board', e.target.value)} className="riso-input" placeholder="Ex: WBBSE / CBSE" />
             </div>
-
             <div className="flex flex-col gap-1.5">
-              <label className="tech-label">Diploma Rank</label>
-              <input 
-                type="text" 
-                value={formState.diploma_rank} 
-                onChange={(e) => handleInputChange('diploma_rank', e.target.value)}
-                className="riso-input"
-              />
+              <label className="tech-label">School Name *</label>
+              <input type="text" value={formState.class_x_school} onChange={(e) => handleInputChange('class_x_school', e.target.value)} className="riso-input" placeholder="Full School Name" />
             </div>
-
             <div className="flex flex-col gap-1.5">
-              <label className="tech-label">Diploma Stream (Abbreviated)</label>
-              <input 
-                type="text" 
-                value={formState.diploma_stream} 
-                onChange={(e) => handleInputChange('diploma_stream', e.target.value)}
-                className="riso-input"
-              />
+              <label className="tech-label">Medium of Study *</label>
+              <select value={formState.class_x_medium} onChange={(e) => handleInputChange('class_x_medium', e.target.value)} className="riso-select">
+                <option value="">Select Medium</option>
+                <option value="ENG">ENGLISH</option>
+                <option value="BENG">BENGALI</option>
+                <option value="HINDI">HINDI</option>
+              </select>
             </div>
-
             <div className="flex flex-col gap-1.5">
-              <label className="tech-label">Diploma Year of Passing</label>
-              <input 
-                type="text" 
-                value={formState.diploma_pass_year} 
-                onChange={(e) => handleInputChange('diploma_pass_year', e.target.value)}
-                className="riso-input"
-              />
+              <label className="tech-label">Standard Marks % (No % Sign) *</label>
+              <input type="text" value={formState.class_x_std_marks_pct} onChange={(e) => handleInputChange('class_x_std_marks_pct', e.target.value)} className="riso-input" placeholder="Ex: 85.5" />
             </div>
-
             <div className="flex flex-col gap-1.5">
-              <label className="tech-label">Diploma College Name</label>
-              <input 
-                type="text" 
-                value={formState.diploma_college} 
-                onChange={(e) => handleInputChange('diploma_college', e.target.value)}
-                className="riso-input"
-              />
+              <label className="tech-label">Actual Percentage (Total Marks Calc) *</label>
+              <input type="text" value={formState.class_x_actual_pct} onChange={(e) => handleInputChange('class_x_actual_pct', e.target.value)} className="riso-input" placeholder="Ex: 85.43" />
             </div>
-
             <div className="flex flex-col gap-1.5">
-              <label className="tech-label">Diploma University Name</label>
-              <input 
-                type="text" 
-                value={formState.diploma_university} 
-                onChange={(e) => handleInputChange('diploma_university', e.target.value)}
-                className="riso-input"
-              />
+              <label className="tech-label">Maths Marks % (No % Sign) *</label>
+              <input type="text" value={formState.class_x_math_pct} onChange={(e) => handleInputChange('class_x_math_pct', e.target.value)} className="riso-input" placeholder="Ex: 92" />
             </div>
-
             <div className="flex flex-col gap-1.5">
-              <label className="tech-label">Diploma Final Percentage</label>
-              <input 
-                type="text" 
-                value={formState.diploma_pct} 
-                onChange={(e) => handleInputChange('diploma_pct', e.target.value)}
-                className="riso-input"
-              />
+              <label className="tech-label">Science Group (Phy+Chem+Bio) % *</label>
+              <input type="text" value={formState.class_x_science_pct} onChange={(e) => handleInputChange('class_x_science_pct', e.target.value)} className="riso-input" placeholder="Ex: 88" />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="tech-label">Computer Application % (If Any)</label>
+              <input type="text" value={formState.class_x_comp_app_pct} onChange={(e) => handleInputChange('class_x_comp_app_pct', e.target.value)} className="riso-input" placeholder="Ex: 96 or NA" />
             </div>
           </div>
         )}
 
-        {/* TAB 4: B.TECH PERFORMANCE */}
+        {/* TAB 3: CLASS XII */}
+        {activeTab === 2 && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <h3 className="md:col-span-3 font-black text-lg text-[var(--ink-blue)] border-b pb-2 mb-2 uppercase tracking-wide">
+              SECTION 3: CLASS XII ACADEMICS
+            </h3>
+
+            <div className="md:col-span-3 bg-yellow-50 border-2 border-[var(--ink-yellow)] p-4 text-xs font-mono leading-relaxed text-black shadow-[3px_3px_0px_#121212]">
+              <div className="font-black text-sm mb-2 flex items-center gap-1.5 text-amber-800">
+                <span>⚠️</span> NOTE:
+              </div>
+              <ul className="list-disc pl-5 space-y-1.5">
+                <li><span className="font-bold text-[var(--ink-pink)]">If you appeared for Class XII (Higher Secondary):</span> Select <span className="bg-white px-1 border border-black font-bold">YES</span> — fill in your Class XII details below.</li>
+                <li><span className="font-bold text-[var(--ink-pink)]">If you went directly to Diploma after Class X (did not appear for Class XII):</span> Select <span className="bg-white px-1 border border-black font-bold">NO</span> — you can skip to the next section.</li>
+              </ul>
+            </div>
+
+            {/* Gateway */}
+            <div className="md:col-span-3 flex flex-col gap-1.5">
+              <label className="tech-label">Did you appear for Class XII (Higher Secondary)? *</label>
+              <select value={formState.has_class_xii} onChange={(e) => handleInputChange('has_class_xii', e.target.value)} className="riso-select">
+                <option value="">Select YES or NO</option>
+                <option value="YES">YES — I completed Class XII / Higher Secondary</option>
+                <option value="NO">NO — I went directly to Diploma after Class X</option>
+              </select>
+            </div>
+
+            {formState.has_class_xii === 'YES' && (
+              <>
+                <div className="md:col-span-3 border-t-2 border-dashed border-[var(--ink-blue)] my-2 flex items-center gap-2">
+                  <span className="bg-[var(--ink-blue)] text-white text-[10px] font-black px-2 py-0.5 font-mono whitespace-nowrap">CLASS XII DETAILS</span>
+                </div>
+
+                <div className="md:col-span-3 bg-blue-50 border-2 border-[var(--ink-blue)] p-4 text-xs font-semibold text-gray-700 leading-relaxed shadow-[3px_3px_0px_#121212]">
+                  <p className="font-black text-[var(--ink-blue)] uppercase mb-1">💡 Understanding Class XII Marks:</p>
+                  <ul className="list-disc pl-4 space-y-1">
+                    <li><strong>Standard Marks %:</strong> Enter the percentage calculated according to your board/council rules (e.g., best of 4/5 subjects as reported on your official marksheet). Do not insert the "%" sign.</li>
+                    <li><strong>Actual Percentage:</strong> Strictly calculate as: <code className="bg-gray-100 px-1 border border-black font-mono font-bold text-[10px]">(Total Marks Obtained ÷ Total Marks Appeared) × 100</code>. Include all subjects you appeared for. Do not round off (e.g., if 82.20%, enter 82.20).</li>
+                  </ul>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="tech-label">Name of Examination *</label>
+                  <input type="text" value={formState.class_xii_exam_name} onChange={(e) => handleInputChange('class_xii_exam_name', e.target.value)} className="riso-input" placeholder="Ex: WBCHSE / CBSE / ISC" />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="tech-label">Year of Pass Out *</label>
+                  <input type="text" value={formState.class_xii_pass_year} onChange={(e) => handleInputChange('class_xii_pass_year', e.target.value)} className="riso-input" placeholder="Ex: 2023" />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="tech-label">Board / Council Name (Abbreviated) *</label>
+                  <input type="text" value={formState.class_xii_board} onChange={(e) => handleInputChange('class_xii_board', e.target.value)} className="riso-input" placeholder="Ex: WBCHSE / CBSE" />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="tech-label">School Name *</label>
+                  <input type="text" value={formState.class_xii_school} onChange={(e) => handleInputChange('class_xii_school', e.target.value)} className="riso-input" placeholder="Full School Name" />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="tech-label">Medium of Study *</label>
+                  <select value={formState.class_xii_medium} onChange={(e) => handleInputChange('class_xii_medium', e.target.value)} className="riso-select">
+                    <option value="">Select Medium</option>
+                    <option value="ENG">ENGLISH</option>
+                    <option value="BENG">BENGALI</option>
+                    <option value="HINDI">HINDI</option>
+                  </select>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="tech-label">Standard Marks % (No % Sign) *</label>
+                  <input type="text" value={formState.class_xii_std_marks_pct} onChange={(e) => handleInputChange('class_xii_std_marks_pct', e.target.value)} className="riso-input" placeholder="Ex: 82.2" />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="tech-label">Actual Percentage (Total Marks Calc) *</label>
+                  <input type="text" value={formState.class_xii_actual_pct} onChange={(e) => handleInputChange('class_xii_actual_pct', e.target.value)} className="riso-input" placeholder="Ex: 82.20" />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="tech-label">Maths Marks % *</label>
+                  <input type="text" value={formState.class_xii_math_pct} onChange={(e) => handleInputChange('class_xii_math_pct', e.target.value)} className="riso-input" placeholder="Maths Marks" />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="tech-label">Physics Marks % *</label>
+                  <input type="text" value={formState.class_xii_physics_pct} onChange={(e) => handleInputChange('class_xii_physics_pct', e.target.value)} className="riso-input" placeholder="Physics Marks" />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="tech-label">Chemistry Marks % *</label>
+                  <input type="text" value={formState.class_xii_chemistry_pct} onChange={(e) => handleInputChange('class_xii_chemistry_pct', e.target.value)} className="riso-input" placeholder="Chemistry Marks" />
+                </div>
+              </>
+            )}
+
+            {formState.has_class_xii === 'NO' && (
+              <div className="md:col-span-3 bg-green-50 border-2 border-[var(--ink-green)] p-4 text-xs font-mono text-black shadow-[3px_3px_0px_#121212]">
+                <span className="font-black text-[var(--ink-green)]">✓ Noted.</span> Class XII fields will be recorded as <span className="bg-white px-1 border border-black">NA</span> in your profile. You can proceed to the next section.
+              </div>
+            )}
+          </div>
+        )}
+
+
+        {/* TAB 4: DIPLOMA */}
         {activeTab === 3 && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <h3 className="md:col-span-3 font-black text-lg text-[var(--ink-green)] border-b pb-2 mb-2 uppercase tracking-wide">
+              SECTION 4: DIPLOMA DETAILS
+            </h3>
+
+            <div className="md:col-span-3 bg-yellow-50 border-2 border-[var(--ink-yellow)] p-4 text-xs font-mono leading-relaxed text-black shadow-[3px_3px_0px_#121212]">
+              <div className="font-black text-sm mb-2 flex items-center gap-1.5 text-amber-800">
+                <span>⚠️</span> NOTE:
+              </div>
+              <ul className="list-disc pl-5 space-y-1.5">
+                <li><span className="font-bold text-[var(--ink-pink)]">If you completed a Diploma (Lateral / JELET entry):</span> Select <span className="bg-white px-1 border border-black font-bold">YES</span> — fill in all the diploma fields below.</li>
+                <li><span className="font-bold text-[var(--ink-pink)]">If you did NOT do a Diploma (came via Class 12 / Management Quota):</span> Select <span className="bg-white px-1 border border-black font-bold">NO</span> — diploma fields will be skipped automatically.</li>
+              </ul>
+            </div>
+
+            {/* Gateway */}
+            <div className="md:col-span-3 flex flex-col gap-1.5">
+              <label className="tech-label">Did you complete a Diploma before joining B.Tech? *</label>
+              <select value={formState.has_diploma} onChange={(e) => handleInputChange('has_diploma', e.target.value)} className="riso-select">
+                <option value="">Select YES or NO</option>
+                <option value="YES">YES — I have a Diploma (Lateral / JELET entry)</option>
+                <option value="NO">NO — I did not complete a Diploma</option>
+              </select>
+            </div>
+
+            {formState.has_diploma === 'YES' && (
+              <>
+                <div className="md:col-span-3 border-t-2 border-dashed border-[var(--ink-green)] my-2 flex items-center gap-2">
+                  <span className="bg-[var(--ink-green)] text-white text-[10px] font-black px-2 py-0.5 font-mono whitespace-nowrap">DIPLOMA DETAILS</span>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="tech-label">Diploma Entrance Test Name *</label>
+                  <input type="text" value={formState.diploma_exam_name} onChange={(e) => handleInputChange('diploma_exam_name', e.target.value)} className="riso-input" placeholder="Ex: JELET" />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="tech-label">Diploma Rank *</label>
+                  <input type="text" value={formState.diploma_rank} onChange={(e) => handleInputChange('diploma_rank', e.target.value)} className="riso-input" placeholder="Ex: 4521" />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="tech-label">Diploma Stream (Abbreviated) *</label>
+                  <input type="text" value={formState.diploma_stream} onChange={(e) => handleInputChange('diploma_stream', e.target.value)} className="riso-input" placeholder="Ex: CE / EE / CSE" />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="tech-label">Diploma Year of Passing *</label>
+                  <input type="text" value={formState.diploma_pass_year} onChange={(e) => handleInputChange('diploma_pass_year', e.target.value)} className="riso-input" placeholder="Ex: 2023" />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="tech-label">Diploma College Name *</label>
+                  <input type="text" value={formState.diploma_college} onChange={(e) => handleInputChange('diploma_college', e.target.value)} className="riso-input" placeholder="Ex: Govt. Polytechnic Kolkata" />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="tech-label">Diploma University Name *</label>
+                  <input type="text" value={formState.diploma_university} onChange={(e) => handleInputChange('diploma_university', e.target.value)} className="riso-input" placeholder="Ex: WBSCTE" />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="tech-label">Diploma Final Percentage *</label>
+                  <input type="text" value={formState.diploma_pct} onChange={(e) => handleInputChange('diploma_pct', e.target.value)} className="riso-input" placeholder="Ex: 76.40" />
+                </div>
+              </>
+            )}
+
+            {formState.has_diploma === 'NO' && (
+              <div className="md:col-span-3 bg-green-50 border-2 border-[var(--ink-green)] p-4 text-xs font-mono text-black shadow-[3px_3px_0px_#121212]">
+                <span className="font-black text-[var(--ink-green)]">✓ Noted.</span> Diploma fields will be recorded as <span className="bg-white px-1 border border-black">NA</span> in your profile. Proceed to the next section.
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 5: ENTRANCE EXAM */}
+        {activeTab === 4 && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <h3 className="md:col-span-3 font-black text-lg text-[var(--ink-green)] border-b pb-2 mb-2 uppercase tracking-wide">
+              SECTION 5: B.TECH INTAKE ENTRANCE EXAM
+            </h3>
+
+            <div className="md:col-span-3 bg-yellow-50 border-2 border-[var(--ink-yellow)] p-4 text-xs font-mono leading-relaxed text-black shadow-[3px_3px_0px_#121212]">
+              <div className="font-black text-sm mb-2 flex items-center gap-1.5 text-amber-800">
+                <span>⚠️</span> HOW TO FILL:
+              </div>
+              <ul className="list-disc pl-5 space-y-1.5">
+                <li><span className="font-bold text-[var(--ink-pink)]">Via Diploma (JELET):</span> Write the entrance exam you took for your Diploma (e.g., <span className="bg-white px-1 border border-black">JELET</span>) and your rank.</li>
+                <li><span className="font-bold text-[var(--ink-pink)]">Via Class 12 (WBJEE / JEE Main):</span> Write the entrance exam name and your rank.</li>
+                <li><span className="font-bold text-[var(--ink-pink)]">Via Management Quota:</span> If you took an entrance exam, write its name and rank. If you did not take any entrance exam, write <span className="bg-white px-1 border border-black">Management Quota</span> as the exam name and <span className="bg-white px-1 border border-black">NA</span> as the rank.</li>
+              </ul>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="tech-label">Entrance Exam Name *</label>
+              <input type="text" value={formState.entrance_exam_name} onChange={(e) => handleInputChange('entrance_exam_name', e.target.value)} className="riso-input" placeholder="Ex: WBJEE / JEE MAIN / JELET / Management Quota" />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="tech-label">Entrance Exam Rank *</label>
+              <input type="text" value={formState.entrance_exam_rank} onChange={(e) => handleInputChange('entrance_exam_rank', e.target.value)} className="riso-input" placeholder="Ex: 12045 (write NA if no entrance exam)" />
+            </div>
+          </div>
+        )}
+
+        {/* TAB 6: B.TECH PERFORMANCE */}
+        {activeTab === 5 && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <h3 className="md:col-span-3 font-black text-lg text-[var(--ink-pink)] border-b pb-2 mb-2 uppercase tracking-wide">
-              SECTION 5: GRADUATION (B.TECH PERFORMANCE)
+              SECTION 6: GRADUATION (B.TECH PERFORMANCE)
             </h3>
 
             <div className="flex flex-col gap-1.5">
@@ -1134,13 +1813,23 @@ export default function StudentDashboard() {
 
             <div className="flex flex-col gap-1.5">
               <label className="tech-label">Course Duration Period *</label>
-              <input 
-                type="text" 
-                value={formState.btech_course_duration} 
-                onChange={(e) => handleInputChange('btech_course_duration', e.target.value)}
-                className="riso-input"
-                placeholder="Ex: 2023-2027"
-              />
+              <div className="flex items-center gap-3">
+                <select
+                  value={formState.btech_course_duration?.split('-')[0] || '2023'}
+                  onChange={(e) => handleInputChange('btech_course_duration', `${e.target.value}-2027`)}
+                  className="riso-select w-40"
+                >
+                  <option value="2023">2023</option>
+                  <option value="2024">2024 (Lateral)</option>
+                </select>
+                <div className="font-bold font-mono text-xl">-</div>
+                <input 
+                  type="text" 
+                  value="2027" 
+                  disabled
+                  className="riso-input w-40 bg-gray-100 cursor-not-allowed opacity-80"
+                />
+              </div>
             </div>
 
             <div className="md:col-span-3 border-t border-dashed border-black my-2"></div>
@@ -1220,54 +1909,69 @@ export default function StudentDashboard() {
                 onChange={(e) => handleInputChange('btech_backlog', e.target.value)}
                 className="riso-select"
               >
+                <option value="">Select Option</option>
                 <option value="NO">NO</option>
                 <option value="YES">YES</option>
               </select>
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label className="tech-label">Number of Backlogs (If YES)</label>
-              <input 
-                type="text" 
-                value={formState.btech_backlog_count} 
-                onChange={(e) => handleInputChange('btech_backlog_count', e.target.value)}
-                className="riso-input"
-                placeholder="Ex: 0 or 2"
-              />
-            </div>
+            {formState.btech_backlog === 'YES' && (
+              <>
+                <div className="flex flex-col gap-1.5">
+                  <label className="tech-label">Number of Backlogs *</label>
+                  <input 
+                    type="text" 
+                    value={formState.btech_backlog_count} 
+                    onChange={(e) => handleInputChange('btech_backlog_count', e.target.value)}
+                    className="riso-input"
+                    placeholder="Ex: 2"
+                  />
+                </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label className="tech-label">Backlog Subject Code 1</label>
-              <input 
-                type="text" 
-                value={formState.btech_backlog_subject_1} 
-                onChange={(e) => handleInputChange('btech_backlog_subject_1', e.target.value)}
-                className="riso-input"
-                placeholder="Ex: PCC-CS501 or N.A."
-              />
-            </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="tech-label">Backlog Subject Code 1 *</label>
+                  <input 
+                    type="text" 
+                    value={formState.btech_backlog_subject_1} 
+                    onChange={(e) => handleInputChange('btech_backlog_subject_1', e.target.value)}
+                    className="riso-input"
+                    placeholder="Ex: PCC-CS501"
+                  />
+                </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label className="tech-label">Backlog Subject Code 2</label>
-              <input 
-                type="text" 
-                value={formState.btech_backlog_subject_2} 
-                onChange={(e) => handleInputChange('btech_backlog_subject_2', e.target.value)}
-                className="riso-input"
-                placeholder="Subject code or N.A."
-              />
-            </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="tech-label">Backlog Subject Code 2</label>
+                  <input 
+                    type="text" 
+                    value={formState.btech_backlog_subject_2} 
+                    onChange={(e) => handleInputChange('btech_backlog_subject_2', e.target.value)}
+                    className="riso-input"
+                    placeholder="Subject code (leave blank if none)"
+                  />
+                </div>
+              </>
+            )}
           </div>
         )}
 
-        {/* TAB 5: ADDRESSES */}
-        {activeTab === 4 && (
+        {/* TAB 7: ADDRESSES */}
+        {activeTab === 6 && (
           <div className="flex flex-col gap-8">
             {/* Permanent Address */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <h3 className="md:col-span-3 font-black text-lg text-[var(--ink-blue)] border-b pb-2 mb-2 uppercase tracking-wide">
-                SECTION 6: PERMANENT ADDRESS DETAILS
+                SECTION 7: PERMANENT ADDRESS DETAILS
               </h3>
+
+              <div className="md:col-span-3 bg-yellow-50 border-2 border-[var(--ink-yellow)] p-4 text-xs font-mono leading-relaxed text-black shadow-[3px_3px_0px_#121212]">
+                <div className="font-black text-sm mb-2 flex items-center gap-1.5 text-amber-800">
+                  <span>📝</span> COMPLETE ADDRESS NOTE:
+                </div>
+                <ul className="list-disc pl-5 space-y-1.5">
+                  <li>Please provide your <span className="font-bold text-[var(--ink-pink)]">Full Complete Address</span> exactly as it appears in your official documents (Aadhar, Passport, etc).</li>
+                  <li>Ensure you include your <strong>House No/Name, Street Name, Locality, Landmark, and Police Station (P.S.)</strong>.</li>
+                </ul>
+              </div>
 
               <div className="md:col-span-3 flex flex-col gap-1.5">
                 <label className="tech-label">Complete Permanent Address *</label>
@@ -1322,12 +2026,17 @@ export default function StudentDashboard() {
 
               <div className="flex flex-col gap-1.5">
                 <label className="tech-label">State *</label>
-                <input 
-                  type="text" 
+                <select 
                   value={formState.perm_state} 
                   onChange={(e) => handleInputChange('perm_state', e.target.value)}
-                  className="riso-input"
-                />
+                  className="riso-select"
+                >
+                  <option value="">Select State</option>
+                  <option value="West Bengal">West Bengal</option>
+                  <option value="Bihar">Bihar</option>
+                  <option value="Jharkhand">Jharkhand</option>
+                  <option value="Others">Others</option>
+                </select>
               </div>
             </div>
 
@@ -1399,19 +2108,24 @@ export default function StudentDashboard() {
 
               <div className="flex flex-col gap-1.5">
                 <label className="tech-label">State *</label>
-                <input 
-                  type="text" 
+                <select 
                   value={formState.pres_state} 
                   onChange={(e) => handleInputChange('pres_state', e.target.value)}
-                  className="riso-input"
-                />
+                  className="riso-select"
+                >
+                  <option value="">Select State</option>
+                  <option value="West Bengal">West Bengal</option>
+                  <option value="Bihar">Bihar</option>
+                  <option value="Jharkhand">Jharkhand</option>
+                  <option value="Others">Others</option>
+                </select>
               </div>
             </div>
           </div>
         )}
 
-        {/* TAB 6: FAMILY DETAILS */}
-        {activeTab === 5 && (
+        {/* TAB 8: FAMILY DETAILS */}
+        {activeTab === 7 && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <h3 className="md:col-span-3 font-black text-lg text-[var(--ink-green)] border-b pb-2 mb-2 uppercase tracking-wide">
               SECTION 8: FAMILY & GUARDIAN DETAILS
@@ -1499,8 +2213,8 @@ export default function StudentDashboard() {
           </div>
         )}
 
-        {/* TAB 7: STUDY GAP & DECLARATION */}
-        {activeTab === 6 && (
+        {/* TAB 9: STUDY GAP & DECLARATION */}
+        {activeTab === 8 && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <h3 className="md:col-span-3 font-black text-lg text-[var(--ink-pink)] border-b pb-2 mb-2 uppercase tracking-wide">
               SECTION 9: ESSENTIAL DISABILITY, STUDY GAP & DECLARATION
@@ -1513,6 +2227,7 @@ export default function StudentDashboard() {
                 onChange={(e) => handleInputChange('physical_disability', e.target.value)}
                 className="riso-select"
               >
+                <option value="">Select Option</option>
                 <option value="NO">NO</option>
                 <option value="YES">YES</option>
               </select>
@@ -1525,43 +2240,48 @@ export default function StudentDashboard() {
                 onChange={(e) => handleInputChange('study_gap', e.target.value)}
                 className="riso-select"
               >
+                <option value="">Select Option</option>
                 <option value="NO">NO</option>
                 <option value="YES">YES</option>
               </select>
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label className="tech-label">Number of Study Gap Years (If YES)</label>
-              <input 
-                type="text" 
-                value={formState.study_gap_years} 
-                onChange={(e) => handleInputChange('study_gap_years', e.target.value)}
-                className="riso-input"
-                placeholder="Ex: 0 or 1"
-              />
-            </div>
+            {formState.study_gap === 'YES' && (
+              <>
+                <div className="flex flex-col gap-1.5">
+                  <label className="tech-label">Number of Study Gap Years *</label>
+                  <input 
+                    type="text" 
+                    value={formState.study_gap_years} 
+                    onChange={(e) => handleInputChange('study_gap_years', e.target.value)}
+                    className="riso-input"
+                    placeholder="Ex: 1, 2, or 3"
+                  />
+                </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label className="tech-label">Specify Period of Study Gap</label>
-              <input 
-                type="text" 
-                value={formState.study_gap_period} 
-                onChange={(e) => handleInputChange('study_gap_period', e.target.value)}
-                className="riso-input"
-                placeholder="Ex: (2021-2022) or N.A."
-              />
-            </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="tech-label">Specify Period of Study Gap *</label>
+                  <input 
+                    type="text" 
+                    value={formState.study_gap_period} 
+                    onChange={(e) => handleInputChange('study_gap_period', e.target.value)}
+                    className="riso-input"
+                    placeholder="Ex: 2021-2022"
+                  />
+                </div>
 
-            <div className="md:col-span-2 flex flex-col gap-1.5">
-              <label className="tech-label">Reason of Study Gap</label>
-              <input 
-                type="text" 
-                value={formState.study_gap_reason} 
-                onChange={(e) => handleInputChange('study_gap_reason', e.target.value)}
-                className="riso-input"
-                placeholder="Describe reason or N.A."
-              />
-            </div>
+                <div className="md:col-span-2 flex flex-col gap-1.5">
+                  <label className="tech-label">Reason of Study Gap *</label>
+                  <input 
+                    type="text" 
+                    value={formState.study_gap_reason} 
+                    onChange={(e) => handleInputChange('study_gap_reason', e.target.value)}
+                    className="riso-input"
+                    placeholder="Describe reason"
+                  />
+                </div>
+              </>
+            )}
 
             <div className="md:col-span-3 border-t border-dashed border-black my-2"></div>
 
@@ -1572,21 +2292,24 @@ export default function StudentDashboard() {
                 onChange={(e) => handleInputChange('work_experience', e.target.value)}
                 className="riso-select"
               >
+                <option value="">Select Option</option>
                 <option value="NO">NO</option>
                 <option value="YES">YES</option>
               </select>
             </div>
 
-            <div className="md:col-span-2 flex flex-col gap-1.5">
-              <label className="tech-label">Specify Work Experience (Details)</label>
-              <input 
-                type="text" 
-                value={formState.work_experience_mention} 
-                onChange={(e) => handleInputChange('work_experience_mention', e.target.value)}
-                className="riso-input"
-                placeholder="Company Name, Role, Tenure or N.A."
-              />
-            </div>
+            {formState.work_experience === 'YES' && (
+              <div className="md:col-span-2 flex flex-col gap-1.5">
+                <label className="tech-label">Specify Work Experience (Details) *</label>
+                <input 
+                  type="text" 
+                  value={formState.work_experience_mention} 
+                  onChange={(e) => handleInputChange('work_experience_mention', e.target.value)}
+                  className="riso-input"
+                  placeholder="Company Name, Role, Tenure"
+                />
+              </div>
+            )}
 
             <div className="md:col-span-3 border-t-2 border-[var(--ink-black)] my-4 pt-4">
               <div className="riso-card riso-card-yellow bg-[#fffce6] flex flex-col gap-4 p-5">
@@ -1643,7 +2366,7 @@ export default function StudentDashboard() {
               disabled={isSaving}
               className="riso-btn riso-btn-pink text-xs flex items-center gap-1.5 shadow-[2px_2px_0px_#121212]"
             >
-              <CheckCircle2 className="w-4 h-4" /> {isSaving ? "SUBMITTING..." : "SUBMIT FINAL RECORD"}
+              <CheckCircle2 className="w-4 h-4" /> {isSaving ? "SAVING..." : "FINISH & SAVE PROFILE"}
             </button>
           )}
         </div>

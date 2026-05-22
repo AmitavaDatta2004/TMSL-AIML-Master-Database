@@ -284,8 +284,30 @@ export async function GET() {
       return row;
     });
 
-    // 6. Write student matrix into worksheet starting at row 6 (cell A6)
-    XLSX.utils.sheet_add_aoa(worksheet, dataMatrix, { origin: 'A6' });
+    // 6. Write student matrix into worksheet starting at row 5 (cell A5)
+    XLSX.utils.sheet_add_aoa(worksheet, dataMatrix, { origin: 'A5' });
+
+    // Auto-adjust column widths based on the content of the sheet
+    const colWidths: any[] = [];
+    const range = XLSX.utils.decode_range(worksheet['!ref'] || "A1:CH1000");
+    for (let C = range.s.c; C <= range.e.c; ++C) {
+      let max_width = 10; // Minimum width
+      for (let R = range.s.r; R <= range.e.r; ++R) {
+        const cell = worksheet[XLSX.utils.encode_cell({ r: R, c: C })];
+        if (cell && cell.v) {
+          const content = String(cell.v);
+          const lines = content.split('\n');
+          for (const line of lines) {
+            if (line.length > max_width) {
+              max_width = line.length;
+            }
+          }
+        }
+      }
+      // Add padding and cap width
+      colWidths.push({ wch: Math.min(max_width + 2, 50) }); 
+    }
+    worksheet['!cols'] = colWidths;
 
     // 7. Write workbook into memory buffer
     const outBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' });

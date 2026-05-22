@@ -42,17 +42,4 @@ export async function initDatabase() {
   }
 }
 
-/**
- * Checks if a given email belongs to an administrator.
- */
-export function isAdminEmail(email: string | null | undefined): boolean {
-  if (!email) return false;
-  
-  const adminEmailsEnv = process.env.ADMIN_EMAILS || '';
-  const adminEmails = adminEmailsEnv
-    .split(',')
-    .map(e => e.trim().toLowerCase())
-    .filter(Boolean);
-    
-  return adminEmails.includes(email.toLowerCase());
-}
+

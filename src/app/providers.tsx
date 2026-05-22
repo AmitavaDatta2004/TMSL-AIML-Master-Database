@@ -18,7 +18,7 @@ interface AuthContextType {
   loginDemo: (role: 'student' | 'admin', email: string) => Promise<void>;
   logout: () => Promise<void>;
   signInEmail: (email: string, password: string) => Promise<{ error?: string }>;
-  signUpEmail: (email: string, password: string, name: string) => Promise<{ error?: string }>;
+  signUpEmail: (email: string, password: string, name: string, rollNumber?: string) => Promise<{ error?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -27,7 +27,7 @@ const AuthContext = createContext<AuthContextType>({
   loginDemo: async () => {},
   logout: async () => {},
   signInEmail: async () => ({}),
-  signUpEmail: async () => ({}),
+  signUpEmail: async (email: string, password: string, name: string, rollNumber?: string) => ({}),
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -128,7 +128,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signUpEmail = async (email: string, password: string, name: string) => {
+  const signUpEmail = async (email: string, password: string, name: string, rollNumber?: string) => {
     setLoading(true);
     try {
       const { authClient } = await import('@/lib/auth/client');
@@ -141,6 +141,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) {
         setLoading(false);
         return { error: error.message || 'Failed to create account.' };
+      }
+
+      // Pre-create student submission record so that the roll number is immediately saved
+      if (rollNumber) {
+        try {
+          await fetch('/api/student/submit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email,
+              full_name: name,
+              roll_number: rollNumber,
+              stream: 'CSE-AIML',
+              details: {
+                stream: 'CSE-AIML',
+                roll_number: rollNumber,
+                full_name: name,
+              }
+            })
+          });
+        } catch (dbErr) {
+          console.error("Failed to pre-create student record during signup:", dbErr);
+        }
       }
 
       // Load session
