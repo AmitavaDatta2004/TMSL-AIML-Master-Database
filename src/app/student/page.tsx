@@ -1099,7 +1099,7 @@ export default function StudentDashboard() {
             
             {/* Quick Metrics */}
             <div className="riso-card riso-card-pink flex flex-col gap-3">
-              <h3 className="font-black text-xs uppercase text-white flex items-center gap-1.5">
+              <h3 className="font-black text-xs uppercase text-[var(--ink-pink)] flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-[var(--ink-yellow)]" /> Academic Snapshot
               </h3>
               
