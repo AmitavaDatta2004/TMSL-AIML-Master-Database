@@ -1540,7 +1540,7 @@ export default function StudentDashboard() {
 
             <div className="flex flex-col gap-1.5">
               <label className="tech-label">Name of Examination *</label>
-              <input type="text" value={formState.class_x_exam_name} onChange={(e) => handleInputChange('class_x_exam_name', e.target.value)} className="riso-input" placeholder="Ex: WBBSE / CBSE / ICSE" />
+              <input type="text" value={formState.class_x_exam_name} onChange={(e) => handleInputChange('class_x_exam_name', e.target.value)} className="riso-input" placeholder="Ex: Madhyamik Pariksha (Secondary Examination) or equivalent" />
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="tech-label">Year of Pass Out *</label>
@@ -1629,7 +1629,7 @@ export default function StudentDashboard() {
 
                 <div className="flex flex-col gap-1.5">
                   <label className="tech-label">Name of Examination *</label>
-                  <input type="text" value={formState.class_xii_exam_name} onChange={(e) => handleInputChange('class_xii_exam_name', e.target.value)} className="riso-input" placeholder="Ex: WBCHSE / CBSE / ISC" />
+                  <input type="text" value={formState.class_xii_exam_name} onChange={(e) => handleInputChange('class_xii_exam_name', e.target.value)} className="riso-input" placeholder="Ex: Higher Secondary Examination or equivalent" />
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label className="tech-label">Year of Pass Out *</label>
