@@ -8,12 +8,6 @@ const cookieSecret = process.env.NEON_AUTH_COOKIE_SECRET || "RisoThemeAIMLMaster
 export const auth = baseUrl 
   ? createNeonAuth({
       baseUrl,
-      trustedOrigins: [
-        'http://localhost:3000',
-        'https://tmslaimlmasterdatabase.vercel.app',
-        process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '',
-        process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : ''
-      ].filter(Boolean),
       cookies: {
         secret: cookieSecret,
       },
