@@ -2,9 +2,9 @@ import { createNeonAuth } from '@neondatabase/auth/next/server';
 import { cookies } from 'next/headers';
 
 const getBaseUrl = () => {
-  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}/api/auth`;
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}/api/auth`;
-  return process.env.NEON_AUTH_BASE_URL; // Local env typically already includes /api/auth
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return process.env.NEON_AUTH_BASE_URL;
 };
 const baseUrl = getBaseUrl();
 const cookieSecret = process.env.NEON_AUTH_COOKIE_SECRET || "RisoThemeAIMLMasterSecretCookieKey32Chars!";
