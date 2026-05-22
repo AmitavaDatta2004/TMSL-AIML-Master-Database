@@ -169,7 +169,7 @@ export default function Home() {
       }
     } else {
       // Strict email format validation for students
-      const validation = validateEmailFormat(signupEmail, activeTab === 'admin-signup');
+      const validation = validateEmailFormat(signupEmail, false);
       if (!validation.isValid) {
         setSignupError(validation.error || 'Invalid email format.');
         return;

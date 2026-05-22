@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { sql, initDatabase, isAdminEmail } from '@/lib/db';
+import { sql, initDatabase } from '@/lib/db';
 import { getServerSession } from '@/lib/auth/server';
 
 export const dynamic = 'force-dynamic';
