@@ -1,7 +1,12 @@
 import { createNeonAuth } from '@neondatabase/auth/next/server';
 import { cookies } from 'next/headers';
 
-const baseUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : process.env.NEON_AUTH_BASE_URL);
+const getBaseUrl = () => {
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}/api/auth`;
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}/api/auth`;
+  return process.env.NEON_AUTH_BASE_URL; // Local env typically already includes /api/auth
+};
+const baseUrl = getBaseUrl();
 const cookieSecret = process.env.NEON_AUTH_COOKIE_SECRET || "RisoThemeAIMLMasterSecretCookieKey32Chars!";
 
 // Always initialize Neon Auth server instance so the API route never returns 404
