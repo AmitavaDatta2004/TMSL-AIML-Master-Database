@@ -70,7 +70,7 @@ const INITIAL_FORM_STATE = {
 
   // Section 5: B.Tech Details
   university_reg_no: '',
-  btech_stream: '',
+  btech_stream: 'CSE-AIML',
   btech_course_duration: '2023-2027',
   sem_1_cgpa: '',
   sem_2_cgpa: '',
@@ -577,6 +577,8 @@ export default function StudentDashboard() {
               full_name: data.record.full_name || prev.full_name,
               roll_number: data.record.roll_number || prev.roll_number,
               stream: data.record.stream || prev.stream,
+              // Force B.Tech Stream to CSE-AIML if empty in draft
+              btech_stream: (data.record.details && data.record.details.btech_stream) ? data.record.details.btech_stream : 'CSE-AIML',
             }));
           } else {
             setHasDbRecord(false);
