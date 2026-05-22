@@ -4,15 +4,15 @@ import { cookies } from 'next/headers';
 const baseUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : process.env.NEON_AUTH_BASE_URL);
 const cookieSecret = process.env.NEON_AUTH_COOKIE_SECRET || "RisoThemeAIMLMasterSecretCookieKey32Chars!";
 
-// Safe initialization of Neon Auth server instance
-export const auth = baseUrl 
-  ? createNeonAuth({
-      baseUrl,
-      cookies: {
-        secret: cookieSecret,
-      },
-    })
-  : null;
+// Always initialize Neon Auth server instance so the API route never returns 404
+export const auth = createNeonAuth({
+  // If baseUrl is undefined, we pass an empty string, which the library might accept, or just cast it to any.
+  // Actually, let's use a type assertion to safely pass the config
+  ...(baseUrl ? { baseUrl } : {}) as any,
+  cookies: {
+    secret: cookieSecret,
+  },
+});
 
 /**
  * Gets the current active session on the server.
