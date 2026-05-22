@@ -158,7 +158,7 @@ export async function GET() {
     row[82] = details.study_gap_reason || "N.A."; // GAP REASON
     row[83] = details.work_experience || "NO"; // WORK EXPERIENCE
     row[84] = details.work_experience_mention || "N.A."; // WORK EXPERIENCE MENTION
-    row[85] = details.declaration_agree || "YES"; // DECLARATION
+    row[85] = "AGREE"; // DECLARATION
 
     const dataMatrix = [row];
 
