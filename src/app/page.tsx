@@ -23,7 +23,7 @@ import {
 type TabType = 'login' | 'signup' | 'forgot' | 'admin-login' | 'admin-signup';
 
 // Strict Email Format Validator
-const validateEmailFormat = (email: string): { isValid: boolean; error?: string; isStudent: boolean; isAdmin: boolean } => {
+const validateEmailFormat = (email: string, isAttemptingAdmin: boolean = false): { isValid: boolean; error?: string; isStudent: boolean; isAdmin: boolean } => {
   const cleanEmail = email.toLowerCase().trim();
   
   const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail);
@@ -37,8 +37,21 @@ const validateEmailFormat = (email: string): { isValid: boolean; error?: string;
     };
   }
 
-  // Without hardcoded emails, all valid emails are treated as potential students initially.
-  // Real admin status is determined strictly by the database/auth provider session.
+  if (isAttemptingAdmin) {
+    return { isValid: true, isStudent: false, isAdmin: true };
+  }
+
+  const isStudent = cleanEmail.includes('tmsl.aiml27.');
+
+  if (!isStudent) {
+    return {
+      isValid: false,
+      isStudent: false,
+      isAdmin: false,
+      error: 'Authentication Rejected: You must authenticate using an account matching our batch format (e.g. tmsl.aiml27.001das@gmail.com).'
+    };
+  }
+
   return { isValid: true, isStudent: true, isAdmin: false };
 };
 
@@ -78,7 +91,7 @@ export default function Home() {
   // Automatic redirect if user session is already active & matches validation rules
   React.useEffect(() => {
     if (user) {
-      const validation = validateEmailFormat(user.email);
+      const validation = validateEmailFormat(user.email, user.role === 'admin');
       if (!validation.isValid) {
         logout();
         setLoginError('Authentication Rejected: You must authenticate using an account matching our batch format (e.g. tmsl.aiml27.001das@gmail.com).');
@@ -116,7 +129,7 @@ export default function Home() {
     }
 
     // Strict email format validation
-    const validation = validateEmailFormat(loginEmail);
+    const validation = validateEmailFormat(loginEmail, activeTab === 'admin-login');
     if (!validation.isValid) {
       setLoginError(validation.error || 'Invalid email format.');
       return;
@@ -156,7 +169,7 @@ export default function Home() {
       }
     } else {
       // Strict email format validation for students
-      const validation = validateEmailFormat(signupEmail);
+      const validation = validateEmailFormat(signupEmail, activeTab === 'admin-signup');
       if (!validation.isValid) {
         setSignupError(validation.error || 'Invalid email format.');
         return;
@@ -178,12 +191,10 @@ export default function Home() {
         const expectedEmail = `tmsl.aiml27.${last3Digits}${firstName}@gmail.com`;
 
         // Strict registration email rule temporarily bypassed for testing
-        /*
         if (signupEmail.toLowerCase().trim() !== expectedEmail) {
           setSignupError(`Strict Registration Rule: Your email address must be exactly "${expectedEmail}" based on your roll number and first name.`);
           return;
         }
-        */
       }
     }
 

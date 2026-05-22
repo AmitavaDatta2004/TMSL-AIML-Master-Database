@@ -9,6 +9,102 @@ import {
   X, Eye, BookOpen, User, MapPin, Sparkles, LogOut, ArrowLeft, GraduationCap
 } from 'lucide-react';
 
+const getRequiredFieldsForTab = (tabIndex: number, formState: any) => {
+  switch (tabIndex) {
+    case 0:
+      return [
+        'roll_number', 'full_name', 'first_middle_name', 'photo_pdf_link', 
+        'gender', 'dob', 'blood_group', 'contact_operational_1', 
+        'email_operational_gmail', 'linkedin_link', 'github_link'
+      ];
+    case 1:
+      return [
+        'class_x_exam_name', 'class_x_pass_year', 'class_x_board', 'class_x_school',
+        'class_x_medium', 'class_x_std_marks_pct', 'class_x_actual_pct', 'class_x_math_pct',
+        'class_x_science_pct'
+      ];
+    case 2:
+      if (formState.has_class_xii === 'YES') {
+        return [
+          'has_class_xii', 'class_xii_exam_name', 'class_xii_pass_year', 'class_xii_board',
+          'class_xii_school', 'class_xii_medium', 'class_xii_std_marks_pct', 'class_xii_actual_pct',
+          'class_xii_math_pct', 'class_xii_physics_pct', 'class_xii_chemistry_pct'
+        ];
+      } else if (formState.has_class_xii === 'NO') {
+        return ['has_class_xii'];
+      } else {
+        return ['has_class_xii'];
+      }
+    case 3:
+      if (formState.has_diploma === 'YES') {
+        return [
+          'has_diploma', 'diploma_exam_name', 'diploma_rank', 'diploma_stream', 'diploma_pass_year',
+          'diploma_college', 'diploma_university', 'diploma_pct'
+        ];
+      } else if (formState.has_diploma === 'NO') {
+        return ['has_diploma'];
+      } else {
+        return ['has_diploma'];
+      }
+    case 4:
+      return ['entrance_exam_name', 'entrance_exam_rank'];
+    case 5:
+      const btechReqs = [
+        'university_reg_no', 'btech_stream', 'btech_course_duration', 
+        'sem_1_cgpa', 'sem_2_cgpa', 'sem_3_cgpa', 'sem_4_cgpa', 'sem_5_cgpa', 
+        'btech_avg_cgpa', 'btech_backlog'
+      ];
+      if (formState.btech_backlog === 'YES') {
+        btechReqs.push('btech_backlog_count', 'btech_backlog_subject_1');
+      }
+      return btechReqs;
+    case 6:
+      return [
+        'perm_address', 'perm_post_office', 'perm_city', 'perm_pin', 'perm_district', 'perm_state',
+        'pres_address', 'pres_post_office', 'pres_city', 'pres_pin', 'pres_district', 'pres_state'
+      ];
+    case 7:
+      return ['father_name', 'father_occupation', 'mother_name', 'mother_occupation'];
+    case 8:
+      const gapReqs = ['physical_disability', 'study_gap', 'work_experience', 'declaration_agree'];
+      if (formState.study_gap === 'YES') {
+        gapReqs.push('study_gap_years', 'study_gap_period', 'study_gap_reason');
+      }
+      if (formState.work_experience === 'YES') {
+        gapReqs.push('work_experience_mention');
+      }
+      return gapReqs;
+    default:
+      return [];
+  }
+};
+
+const getTabProgress = (tabIndex: number, formState: any) => {
+  const fields = getRequiredFieldsForTab(tabIndex, formState);
+  if (fields.length === 0) return { filled: 0, total: 0, pct: 100, isComplete: true };
+  
+  let filledCount = 0;
+  fields.forEach(field => {
+    const val = formState[field];
+    if (val !== undefined && val !== null && val.toString().trim() !== '' && val.toString().trim() !== 'NA') {
+      if (field === 'declaration_agree') {
+        if (val === 'YES') {
+          filledCount++;
+        }
+      } else {
+        filledCount++;
+      }
+    }
+  });
+  
+  return {
+    filled: filledCount,
+    total: fields.length,
+    pct: Math.round((filledCount / fields.length) * 100),
+    isComplete: filledCount === fields.length
+  };
+};
+
 export default function AdminDashboard() {
   const { user, loading: authLoading, logout } = useAuth();
   const router = useRouter();
@@ -365,11 +461,37 @@ export default function AdminDashboard() {
                       )}
                     </td>
                     <td className="border-r border-black text-center">
-                      {details.declaration_agree === 'YES' ? (
-                        <span className="text-[10px] font-black text-[var(--ink-green)] uppercase bg-green-50 px-2 py-0.5 border border-[var(--ink-green)]">COMPLETE</span>
-                      ) : (
-                        <span className="text-[10px] font-black text-[var(--ink-pink)] uppercase bg-pink-50 px-2 py-0.5 border border-[var(--ink-pink)]">DRAFT</span>
-                      )}
+                      {(() => {
+                        const tabs = [0,1,2,3,4,5,6,7,8];
+                        const mergedDetails = { 
+                          btech_course_duration: '2023-2027', 
+                          email_operational_gmail: student.email,
+                          full_name: student.full_name,
+                          roll_number: student.roll_number,
+                          ...(details || {}) 
+                        };
+                        const tabProgresses = tabs.map(idx => getTabProgress(idx, mergedDetails));
+                        const totalFilled = tabProgresses.reduce((sum, p) => sum + p.filled, 0);
+                        const totalRequired = tabProgresses.reduce((sum, p) => sum + p.total, 0);
+                        const overallPct = totalRequired > 0 ? Math.round((totalFilled / totalRequired) * 100) : 0;
+                        const isProfileComplete = overallPct === 100;
+                        
+                        if (isProfileComplete) {
+                          return (
+                            <div className="flex flex-col gap-1 items-center justify-center">
+                              <span className="text-[10px] font-black text-[var(--ink-green)] uppercase bg-green-50 px-2 py-0.5 border border-[var(--ink-green)] leading-none">COMPLETE</span>
+                              <span className="text-[10px] font-mono font-bold text-gray-500">100%</span>
+                            </div>
+                          );
+                        }
+                        
+                        return (
+                          <div className="flex flex-col gap-1 items-center justify-center">
+                            <span className="text-[10px] font-black text-[var(--ink-pink)] uppercase bg-pink-50 px-2 py-0.5 border border-[var(--ink-pink)] leading-none">DRAFT</span>
+                            <span className="text-[10px] font-mono font-bold text-gray-500">{overallPct}%</span>
+                          </div>
+                        );
+                      })()}
                     </td>
                     <td className="font-mono text-xs border-r border-black">{details.contact_operational_1 || 'N.A.'}</td>
                     <td className="text-center p-2">
