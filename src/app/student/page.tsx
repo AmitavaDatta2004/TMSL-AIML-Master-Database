@@ -2352,7 +2352,7 @@ export default function StudentDashboard() {
           </button>
 
           <span className="font-mono text-xs font-black tracking-widest text-gray-500">
-            SECTION {activeTab + 1} OF 7
+            SECTION {activeTab + 1} OF 9
           </span>
 
           {activeTab < tabs.length - 1 ? (

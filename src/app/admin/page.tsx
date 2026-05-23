@@ -6,8 +6,9 @@ import { useAuth } from '../providers';
 import { 
   ShieldAlert, Download, Search, SlidersHorizontal, 
   Users, Award, AlertCircle, FileText, CheckCircle2, 
-  X, Eye, BookOpen, User, MapPin, Sparkles, LogOut, ArrowLeft, GraduationCap
+  X, Eye, BookOpen, User, MapPin, Sparkles, LogOut, ArrowLeft, GraduationCap, LayoutGrid
 } from 'lucide-react';
+import GridModeOverlay from './GridModeOverlay';
 
 const getRequiredFieldsForTab = (tabIndex: number, formState: any) => {
   switch (tabIndex) {
@@ -122,6 +123,7 @@ export default function AdminDashboard() {
 
   // Export excel state
   const [isExporting, setIsExporting] = useState(false);
+  const [isGridMode, setIsGridMode] = useState(false);
 
   // Auth protection
   useEffect(() => {
@@ -234,6 +236,14 @@ export default function AdminDashboard() {
   return (
     <div className="flex-1 flex flex-col p-4 md:p-8 max-w-7xl mx-auto w-full gap-6 relative">
       
+      {/* Grid Mode Overlay */}
+      {isGridMode && (
+        <GridModeOverlay 
+          submissions={filteredStudents} 
+          onClose={() => setIsGridMode(false)} 
+        />
+      )}
+
       {/* Drawer overlay background */}
       {selectedStudent && (
         <div 
@@ -264,6 +274,12 @@ export default function AdminDashboard() {
           >
             <FileText className="w-4 h-4" /> PLACEMENT RULES
           </a>
+          <button 
+            onClick={() => setIsGridMode(true)}
+            className="riso-btn bg-[var(--ink-blue)] text-white text-xs shadow-[2px_2px_0px_#121212] hover:shadow-[1px_1px_0px_#121212] flex items-center gap-1.5"
+          >
+            <LayoutGrid className="w-4 h-4" /> MASTER GRID
+          </button>
           <button 
             onClick={handleExportExcel}
             disabled={isExporting}
