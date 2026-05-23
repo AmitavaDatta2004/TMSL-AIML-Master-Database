@@ -181,6 +181,7 @@ export async function GET() {
 
     // Center all headers in row 3 and allow height to expand
     const headerRow = worksheet.getRow(3);
+    // @ts-expect-error: exceljs types require number, but runtime allows undefined for auto-fit
     headerRow.height = undefined; // Auto-fit height
     headerRow.eachCell((cell) => {
       cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
@@ -339,6 +340,7 @@ export async function GET() {
       excelRow.values = row;
       
       // Auto-fit height
+      // @ts-expect-error: exceljs types require number, but runtime allows undefined for auto-fit
       excelRow.height = undefined;
 
       // Center align all cells in this row and allow wrapping
@@ -355,10 +357,13 @@ export async function GET() {
 
     // Auto-adjust column widths based on the content of the sheet (rows 3 and below)
     worksheet.columns.forEach((column) => {
+      if (!column || typeof column.eachCell !== 'function') return;
       let maxLength = 8;
       column.eachCell({ includeEmpty: false }, (cell) => {
-        if (cell.row >= 3) {
-          const content = cell.value ? String(cell.value) : "";
+        if (Number(cell.row) >= 3) {
+          const content = cell.value && typeof cell.value === 'object' && 'text' in cell.value 
+            ? String((cell.value as any).text) 
+            : cell.value ? String(cell.value) : "";
           const lines = content.split('\n');
           for (const line of lines) {
             if (line.length > maxLength) {
