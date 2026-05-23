@@ -704,7 +704,9 @@ export default function StudentDashboard() {
         ].filter(v => !isNaN(v));
         
         if (cgpas.length > 0) {
-          const avg = (cgpas.reduce((a, b) => a + b, 0) / cgpas.length).toFixed(2);
+          const rawAvg = cgpas.reduce((a, b) => a + b, 0) / cgpas.length;
+          // Truncate to exactly 2 decimal places without rounding off
+          const avg = (Math.floor(rawAvg * 100) / 100).toFixed(2);
           updated.btech_avg_cgpa = avg;
         } else {
           updated.btech_avg_cgpa = '';
