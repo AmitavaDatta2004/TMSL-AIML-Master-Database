@@ -914,7 +914,7 @@ export default function StudentDashboard() {
           <div className="bg-pink-50 border-2 border-[var(--ink-pink)] p-4 text-sm text-gray-800 mb-6 font-semibold leading-relaxed shadow-[3px_3px_0px_var(--ink-pink)]">
             Your administrative account ({user.email}) has been created but is currently awaiting database verification. 
             <br/><br/>
-            You cannot access the student dossier or admin terminal until your role is explicitly granted by the system owner.
+            You cannot access the student profile or admin terminal until your role is explicitly granted by the system owner.
           </div>
           <button
             onClick={logout}
@@ -951,7 +951,7 @@ export default function StudentDashboard() {
               </span>
             </div>
             <h2 className="text-4xl font-black text-[var(--ink-black)] mt-2 uppercase tracking-tight">
-              STUDENT PROFILE DOSSIER
+              STUDENT PROFILE
             </h2>
           </div>
           
@@ -1037,7 +1037,7 @@ export default function StudentDashboard() {
               );
             })()}
 
-            {/* Dossier Information Card */}
+            {/* Profile Information Card */}
             <div className="riso-card flex flex-col gap-4">
               <h3 className="font-black text-sm uppercase text-[var(--ink-blue)] flex items-center gap-2">
                 <User className="w-4 h-4" /> Account Credentials

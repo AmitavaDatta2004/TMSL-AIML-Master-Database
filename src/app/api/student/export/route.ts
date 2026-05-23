@@ -97,7 +97,7 @@ export async function GET() {
     }
 
     if (!student) {
-      return NextResponse.json({ error: "No profile data found in database. Please fill your dossier first." }, { status: 404 });
+      return NextResponse.json({ error: "No profile data found in database. Please fill your profile first." }, { status: 404 });
     }
 
     // 5. Construct 1-Row Matrix
@@ -256,12 +256,12 @@ export async function GET() {
     return new Response(outBuffer, {
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'Content-Disposition': `attachment; filename="My_Dossier_${student.roll_number || student.full_name || 'Export'}.xlsx"`,
+        'Content-Disposition': `attachment; filename="My_Profile_${student.roll_number || student.full_name || 'Export'}.xlsx"`,
       },
     });
 
   } catch (error: any) {
-    console.error("Export personal dossier API error:", error);
+    console.error("Export personal profile API error:", error);
     return NextResponse.json({ error: error.message || "Failed to generate Excel file export." }, { status: 500 });
   }
 }
