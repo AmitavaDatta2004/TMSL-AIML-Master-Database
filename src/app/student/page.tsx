@@ -551,10 +551,25 @@ export default function StudentDashboard() {
 
   // Redirect if unauthorized
   useEffect(() => {
-    if (!authLoading && !user) {
+    if (authLoading) return;
+
+    if (!user) {
+      router.push('/');
+      return;
+    }
+
+    // Admins must not access the student page — redirect them to admin panel
+    if (user.role === 'admin') {
+      router.push('/admin');
+      return;
+    }
+
+    // Only student-format emails can access this page
+    if (!user.email?.toLowerCase().includes('tmsl.aiml27.')) {
+      logout();
       router.push('/');
     }
-  }, [user, authLoading, router]);
+  }, [user, authLoading, router, logout]);
 
   // Load student draft record from DB on mount
   useEffect(() => {

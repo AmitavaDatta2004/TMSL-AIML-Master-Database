@@ -23,6 +23,10 @@ import {
 type TabType = 'login' | 'signup' | 'forgot' | 'admin-login' | 'admin-signup';
 
 // Strict Email Format Validator
+const isStudentEmail = (email: string): boolean => {
+  return email.toLowerCase().trim().includes('tmsl.aiml27.');
+};
+
 const validateEmailFormat = (email: string, isAttemptingAdmin: boolean = false): { isValid: boolean; error?: string; isStudent: boolean; isAdmin: boolean } => {
   const cleanEmail = email.toLowerCase().trim();
   
@@ -37,13 +41,15 @@ const validateEmailFormat = (email: string, isAttemptingAdmin: boolean = false):
     };
   }
 
+  // Admin login tab: any valid email is allowed (role is verified server-side via Neon dashboard)
   if (isAttemptingAdmin) {
     return { isValid: true, isStudent: false, isAdmin: true };
   }
 
-  const isStudent = cleanEmail.includes('tmsl.aiml27.');
+  // Student login tab: MUST use the batch email format
+  const student = isStudentEmail(cleanEmail);
 
-  if (!isStudent) {
+  if (!student) {
     return {
       isValid: false,
       isStudent: false,
@@ -88,35 +94,29 @@ export default function Home() {
 
 
 
-  // Automatic redirect if user session is already active & matches validation rules
+  // Automatic redirect if user session is already active
   React.useEffect(() => {
     if (user) {
-      const validation = validateEmailFormat(user.email, user.role === 'admin');
-      if (!validation.isValid) {
-        logout();
-        setLoginError('Authentication Rejected: You must authenticate using an account matching our batch format (e.g. tmsl.aiml27.001das@gmail.com).');
-        return;
-      }
+      // Admins (role set in Neon dashboard): redirect to admin panel — any email format allowed
       if (user.role === 'admin') {
         router.push('/admin');
-      } else {
-        router.push('/student');
+        return;
       }
+
+      // Students: MUST use the official batch email format
+      if (!isStudentEmail(user.email)) {
+        logout();
+        setLoginError('Authentication Rejected: Only students with a batch email (e.g. tmsl.aiml27.001das@gmail.com) can access this system. Admins must use the Admin Login tab.');
+        return;
+      }
+
+      router.push('/student');
     }
   }, [user, router, logout]);
 
-  // Check for developer bypass query parameters on mount
-  React.useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const demo = params.get('demo');
-      if (demo === 'student') {
-        loginDemo('student', 'tmsl.aiml27.001student@gmail.com');
-      } else if (demo === 'admin') {
-        loginDemo('admin', 'biswajit.tmsl27@gmail.com');
-      }
-    }
-  }, [loginDemo]);
+  // Demo bypass via URL param is disabled in production for security.
+  // It is only available in local development via NODE_ENV check.
+
 
 
 

@@ -52,22 +52,16 @@ function ResetPasswordForm() {
     setError(null);
 
     try {
-      if (token === 'dev-mock-token') {
-        // Dev mock bypass success
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        setSuccess(true);
-      } else {
-        const { authClient } = await import('@/lib/auth/client');
-        const { error: resetError } = await authClient.resetPassword({
-          newPassword: password,
-          token
-        });
+      const { authClient } = await import('@/lib/auth/client');
+      const { error: resetError } = await authClient.resetPassword({
+        newPassword: password,
+        token
+      });
 
-        if (resetError) {
-          setError(resetError.message || 'Failed to reset password.');
-        } else {
-          setSuccess(true);
-        }
+      if (resetError) {
+        setError(resetError.message || 'Failed to reset password.');
+      } else {
+        setSuccess(true);
       }
     } catch (err: any) {
       setError(err.message || 'An unexpected error occurred.');
@@ -124,11 +118,6 @@ function ResetPasswordForm() {
         <h2 className="text-2xl font-black text-[var(--ink-blue)] uppercase tracking-tight flex items-center gap-2">
           <Lock className="w-6 h-6 text-[var(--ink-pink)]" /> RESET PASSWORD
         </h2>
-        {token === 'dev-mock-token' && (
-          <span className="font-mono text-[9px] font-black uppercase bg-amber-100 text-amber-900 border border-amber-400 px-2 py-0.5 rounded">
-            DEV MOCK
-          </span>
-        )}
       </div>
       
       {emailParam && (

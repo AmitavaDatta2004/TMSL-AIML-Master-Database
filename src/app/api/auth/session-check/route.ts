@@ -3,31 +3,13 @@ import { getServerSession } from '@/lib/auth/server';
 
 export const dynamic = 'force-dynamic';
 
-const validateEmailFormat = (email: string): boolean => {
-  const cleanEmail = email.toLowerCase().trim();
-  
-  const approvedAdmins = [
-    'amitava@gmail.com',
-    'admin@tmsl-aiml.in',
-    'prof@tmsl-aiml.in',
-    'biswajit.tmsl27@gmail.com'
-  ];
-  
-  if (approvedAdmins.includes(cleanEmail)) {
-    return true;
-  }
-  
-  // Strict Email Rule Bypass: Allow all valid email formats during testing
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail);
-};
-
 export async function GET() {
   try {
     const session = await getServerSession();
     if (session && session.user) {
-      if (session.user.role !== 'admin' && !validateEmailFormat(session.user.email)) {
-        return NextResponse.json({ user: null, error: "Unapproved email format" });
-      }
+      // Role is determined entirely by what is set in the Neon Auth database.
+      // To grant admin access: go to Neon Dashboard → Auth → Users → set role to 'admin'.
+      // No hardcoded email lists. No environment variable overrides.
       return NextResponse.json({ user: session.user });
     }
     return NextResponse.json({ user: null });
