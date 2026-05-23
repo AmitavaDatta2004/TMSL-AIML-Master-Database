@@ -57,7 +57,7 @@ export async function GET() {
 
     // Center all headers in row 3 and set fixed height to prevent clipping
     const headerRow = worksheet.getRow(3);
-    headerRow.height = 70; // Set to fixed height large enough for 3 lines
+    headerRow.height = 40; // Set to fixed height large enough for 3 lines
     headerRow.eachCell((cell) => {
       cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
     });
