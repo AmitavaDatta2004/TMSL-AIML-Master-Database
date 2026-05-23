@@ -171,13 +171,23 @@ export async function GET() {
     const titleCell = worksheet.getCell('A1');
     titleCell.value = "Department of CSE-AIML , TECHNO MAIN SALT LAKE  |  Batch 2023-27";
     titleCell.font = { bold: true, size: 22 };
-    titleCell.alignment = { vertical: 'middle', horizontal: 'left' };
     
     try {
       worksheet.mergeCells('A1:CH1'); // Merge across all 86 columns
     } catch (e) {
       // Ignore if already merged by template
     }
+
+    // Apply middle and center alignment to Row 1
+    titleRow.eachCell((cell) => {
+      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+    });
+
+    // Apply middle and center alignment to Row 2
+    const subHeaderRow = worksheet.getRow(2);
+    subHeaderRow.eachCell((cell) => {
+      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+    });
 
     // Center all headers in row 3 and set fixed height to prevent clipping
     const headerRow = worksheet.getRow(3);
