@@ -179,10 +179,9 @@ export async function GET() {
       // Ignore if already merged by template
     }
 
-    // Center all headers in row 3 and allow height to expand
+    // Center all headers in row 3 and set fixed height to prevent clipping
     const headerRow = worksheet.getRow(3);
-    // @ts-expect-error: exceljs types require number, but runtime allows undefined for auto-fit
-    headerRow.height = undefined; // Auto-fit height
+    headerRow.height = 70; // Set to fixed height large enough for 3 lines
     headerRow.eachCell((cell) => {
       cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
     });
@@ -229,13 +228,13 @@ export async function GET() {
 
       // General Details
       row[0] = idx + 1; // SL. NO.
-      row[1] = student.stream || "CSE-AIML"; // STREAM
+      row[1] = student.stream || ""; // STREAM
       row[2] = parseExcelValue(student.roll_number); // B.TECH UNIVERSITY ROLL NUMBER
       row[3] = student.full_name || details.full_name || ""; // STUDENT'S FULL NAME
       row[4] = details.first_middle_name || ""; // FIRST & MIDDLE NAME
       row[5] = details.last_name || ""; // LAST NAME
       row[6] = createHyperlink(details.photo_pdf_link); // PHOTO PDF LINK
-      row[7] = details.gender || "MALE"; // GENDER
+      row[7] = details.gender || ""; // GENDER
       row[8] = details.dob || ""; // DOB (DD-MM-YYYY)
       row[9] = details.blood_group || ""; // BLOOD GROUP
       row[10] = parseExcelValue(details.contact_residence); // CONTACT RESIDENCE
@@ -251,19 +250,19 @@ export async function GET() {
       row[18] = parseExcelValue(details.class_x_pass_year); // PASS YEAR
       row[19] = details.class_x_board || ""; // BOARD
       row[20] = details.class_x_school || ""; // SCHOOL NAME
-      row[21] = details.class_x_medium || "ENG"; // MEDIUM
+      row[21] = details.class_x_medium || ""; // MEDIUM
       row[22] = parseExcelValue(details.class_x_std_marks_pct); // STANDARD MARKS %
       row[23] = parseExcelValue(details.class_x_actual_pct); // ACTUAL PERCENTAGE
       row[24] = parseExcelValue(details.class_x_math_pct); // MATHS %
       row[25] = parseExcelValue(details.class_x_science_pct); // SCIENCE GROUP %
-      row[26] = parseExcelValue(details.class_x_comp_app_pct) || "N.A."; // COMPUTER APPLICATION %
+      row[26] = parseExcelValue(details.class_x_comp_app_pct) || ""; // COMPUTER APPLICATION %
 
       // Class XII Details
       row[27] = details.class_xii_exam_name || ""; // EXAM NAME
       row[28] = parseExcelValue(details.class_xii_pass_year); // PASS YEAR
       row[29] = details.class_xii_board || ""; // BOARD
       row[30] = details.class_xii_school || ""; // SCHOOL NAME
-      row[31] = details.class_xii_medium || "ENG"; // MEDIUM
+      row[31] = details.class_xii_medium || ""; // MEDIUM
       row[32] = parseExcelValue(details.class_xii_std_marks_pct); // STANDARD MARKS %
       row[33] = parseExcelValue(details.class_xii_actual_pct); // ACTUAL PERCENTAGE
       row[34] = parseExcelValue(details.class_xii_math_pct); // MATHS %
@@ -271,41 +270,41 @@ export async function GET() {
       row[36] = parseExcelValue(details.class_xii_chemistry_pct); // CHEMISTRY %
 
       // Diploma Details
-      row[37] = details.diploma_exam_name || "N.A.";
-      row[38] = parseExcelValue(details.diploma_rank) || "N.A.";
-      row[39] = details.diploma_stream || "N.A.";
-      row[40] = parseExcelValue(details.diploma_pass_year) || "N.A.";
-      row[41] = details.diploma_college || "N.A.";
-      row[42] = details.diploma_university || "N.A.";
-      row[43] = parseExcelValue(details.diploma_pct) || "N.A.";
+      row[37] = details.diploma_exam_name || "";
+      row[38] = parseExcelValue(details.diploma_rank) || "";
+      row[39] = details.diploma_stream || "";
+      row[40] = parseExcelValue(details.diploma_pass_year) || "";
+      row[41] = details.diploma_college || "";
+      row[42] = details.diploma_university || "";
+      row[43] = parseExcelValue(details.diploma_pct) || "";
 
       // Entrance Exam
-      row[44] = details.entrance_exam_name || "WBJEE"; // ENTRANCE EXAM NAME
+      row[44] = details.entrance_exam_name || ""; // ENTRANCE EXAM NAME
       row[45] = parseExcelValue(details.entrance_exam_rank); // ENTRANCE EXAM RANK
 
       // B.Tech Graduation Details
       row[46] = details.university_reg_no || ""; // UNIVERSITY REGISTRATION NO
-      row[47] = student.stream || details.btech_stream || "CSE-AIML"; // STREAM
-      row[48] = details.btech_course_duration || "2023-2027"; // COURSE DURATION
+      row[47] = student.stream || details.btech_stream || ""; // STREAM
+      row[48] = details.btech_course_duration || ""; // COURSE DURATION
       row[49] = parseExcelValue(details.sem_1_cgpa); // SEM 1
       row[50] = parseExcelValue(details.sem_2_cgpa); // SEM 2
       row[51] = parseExcelValue(details.sem_3_cgpa); // SEM 3
       row[52] = parseExcelValue(details.sem_4_cgpa); // SEM 4
       row[53] = parseExcelValue(details.sem_5_cgpa); // SEM 5
       row[54] = parseExcelValue(details.btech_avg_cgpa); // AVERAGE CGPA
-      row[55] = details.btech_backlog || "NO"; // BACKLOG
-      row[56] = parseExcelValue(details.btech_backlog_count) || 0; // BACKLOG COUNT
-      row[57] = details.btech_backlog_subject_1 || "N.A."; // BACKLOG SUB 1
-      row[58] = details.btech_backlog_subject_2 || "N.A."; // BACKLOG SUB 2
+      row[55] = details.btech_backlog || ""; // BACKLOG
+      row[56] = parseExcelValue(details.btech_backlog_count) || ""; // BACKLOG COUNT
+      row[57] = details.btech_backlog_subject_1 || ""; // BACKLOG SUB 1
+      row[58] = details.btech_backlog_subject_2 || ""; // BACKLOG SUB 2
 
       // Family details
       row[59] = details.father_name || ""; // FATHER NAME
       row[60] = details.father_occupation || ""; // OCCUPATION
       row[61] = details.mother_name || ""; // MOTHER NAME
       row[62] = details.mother_occupation || ""; // OCCUPATION
-      row[63] = details.guardian_name || "N.A."; // GUARDIAN NAME
-      row[64] = details.guardian_relation || "N.A."; // GUARDIAN RELATION
-      row[65] = details.guardian_occupation || "N.A."; // OCCUPATION
+      row[63] = details.guardian_name || ""; // GUARDIAN NAME
+      row[64] = details.guardian_relation || ""; // GUARDIAN RELATION
+      row[65] = details.guardian_occupation || ""; // OCCUPATION
 
       // Permanent Address
       row[66] = details.perm_address || ""; // COMPLETE ADDRESS
@@ -313,7 +312,7 @@ export async function GET() {
       row[68] = details.perm_city || ""; // CITY
       row[69] = parseExcelValue(details.perm_pin); // PIN
       row[70] = details.perm_district || ""; // DISTRICT
-      row[71] = details.perm_state || "WEST BENGAL"; // STATE
+      row[71] = details.perm_state || ""; // STATE
 
       // Present Address
       row[72] = details.pres_address || ""; // COMPLETE ADDRESS
@@ -321,16 +320,16 @@ export async function GET() {
       row[74] = details.pres_city || ""; // CITY
       row[75] = parseExcelValue(details.pres_pin); // PIN
       row[76] = details.pres_district || ""; // DISTRICT
-      row[77] = details.pres_state || "WEST BENGAL"; // STATE
+      row[77] = details.pres_state || ""; // STATE
 
       // Essential details
-      row[78] = details.physical_disability || "NO"; // PHYSICAL DISABILITY
-      row[79] = details.study_gap || "NO"; // STUDY GAP
-      row[80] = parseExcelValue(details.study_gap_years) || 0; // GAP YEARS
-      row[81] = details.study_gap_period || "N.A."; // GAP PERIOD
-      row[82] = details.study_gap_reason || "N.A."; // GAP REASON
-      row[83] = details.work_experience || "NO"; // WORK EXPERIENCE
-      row[84] = details.work_experience_mention || "N.A."; // WORK EXPERIENCE MENTION
+      row[78] = details.physical_disability || ""; // PHYSICAL DISABILITY
+      row[79] = details.study_gap || ""; // STUDY GAP
+      row[80] = parseExcelValue(details.study_gap_years) || ""; // GAP YEARS
+      row[81] = details.study_gap_period || ""; // GAP PERIOD
+      row[82] = details.study_gap_reason || ""; // GAP REASON
+      row[83] = details.work_experience || ""; // WORK EXPERIENCE
+      row[84] = details.work_experience_mention || ""; // WORK EXPERIENCE MENTION
       row[85] = "AGREE"; // DECLARATION
 
       // 6. Write student row into worksheet starting at row 4
