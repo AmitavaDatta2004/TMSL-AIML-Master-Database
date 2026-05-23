@@ -106,7 +106,7 @@ export async function GET() {
 
     // General Details
     row[0] = 1; // SL. NO.
-    row[1] = student.stream || ""; // STREAM
+    row[1] = student.stream || "CSE-AIML"; // STREAM
     row[2] = parseExcelValue(student.roll_number); // B.TECH UNIVERSITY ROLL NUMBER
     row[3] = student.full_name || details.full_name || ""; // STUDENT'S FULL NAME
     row[4] = details.first_middle_name || ""; // FIRST & MIDDLE NAME
